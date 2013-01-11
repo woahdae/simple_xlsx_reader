@@ -60,7 +60,9 @@ module SimpleXlsxReader
     class Mapper < Struct.new(:xml)
       def load_sheets
         sheet_toc.map do |(sheet_name, sheet_number)|
-          Sheet.new(sheet_name, rows_on_sheet(sheet_number))
+          Sheet.new(sheet_name).tap do |sheet|
+            add_rows_to_sheet(sheet, sheet_number)
+          end
         end
       end
 
@@ -76,18 +78,29 @@ module SimpleXlsxReader
         end
       end
 
-      def rows_on_sheet(number)
-        xml.sheets[number].
+      def add_rows_to_sheet(sheet, sheet_number)
+        rownum = -1
+        sheet.rows = xml.sheets[sheet_number].
           xpath("/xmlns:worksheet/xmlns:sheetData/xmlns:row").map do |xrow|
+          rownum += 1
 
+          colnum = -1
           xrow.children.map do |xcell|
+            colnum += 1
+
             type = xcell.attributes['t'] &&
                    xcell.attributes['t'].value
             # If not the above, attempt to determine from a custom style
             type ||= xcell.attributes['s'] &&
                      style_types[xcell.attributes['s'].value.to_i]
 
-            self.class.cast(xcell.text, type, shared_strings: shared_strings)
+            begin
+              self.class.cast(xcell.text, type, shared_strings: shared_strings)
+            rescue => e
+              sheet.load_errors[[rownum, colnum]] = e.message
+
+              xcell.text
+            end
           end
         end
       end
@@ -300,8 +313,8 @@ module SimpleXlsxReader
         rows[1..-1]
       end
 
-      def to_a
-        data
+      def load_errors
+        @load_errors ||= {}
       end
     end
   end
