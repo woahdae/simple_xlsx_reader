@@ -36,5 +36,24 @@ describe SimpleXlsxReader do
         described_class.cast(xml.text, 'inlineStr').must_equal 'the value'
       end
     end
+
+    describe '#shared_strings' do
+      let(:xml) do
+        SimpleXlsxReader::Document::Xml.new.tap do |xml|
+          xml.shared_strings = Nokogiri::XML(File.read(
+            File.join(File.dirname(__FILE__), 'shared_strings.xml') ))
+        end
+      end
+
+      subject { described_class.new(xml) }
+
+      it 'parses strings formatted at the cell level' do
+        subject.shared_strings[0..2].must_equal ['Cell A1', 'Cell B1', 'My Cell']
+      end
+
+      it 'parses strings formatted at the character level' do
+        subject.shared_strings[3..5].must_equal ['Cell A2', 'Cell B2', 'Cell Fmt']
+      end
+    end
   end
 end

@@ -28,6 +28,24 @@ module SimpleXlsxReader
       Xml.load(file_path)
     end
 
+    class Sheet < Struct.new(:name, :rows)
+      def headers
+        rows[0]
+      end
+
+      def data
+        rows[1..-1]
+      end
+
+      # Load errors will be a hash of the form:
+      # {
+      #   [rownum, colnum] => '[error]'
+      # }
+      def load_errors
+        @load_errors ||= {}
+      end
+    end
+
     class Xml
       attr_accessor :workbook, :shared_strings, :sheets, :styles
 
@@ -291,11 +309,18 @@ module SimpleXlsxReader
       # For performance reasons, excel uses an optional SpreadsheetML feature
       # that puts all strings in a separate xml file, and then references
       # them by their index in that file.
+      #
+      # http://msdn.microsoft.com/en-us/library/office/gg278314.aspx
       def shared_strings
         @shared_strings ||= begin
           if xml.shared_strings
-            xml.shared_strings.
-              xpath('/xmlns:sst/xmlns:si/xmlns:t/text()').map(&:to_s)
+            xml.shared_strings.xpath('/xmlns:sst/xmlns:si').map do |xsst|
+              # a shared string can be a single value...
+              sst = xsst.xpath('xmlns:t/text()').first
+              sst = sst.text if sst
+              # ... or a composite of seperately styled words/characters
+              sst ||= xsst.xpath('xmlns:r/xmlns:t/text()').map(&:text).join
+            end
           else
             []
           end
@@ -304,18 +329,5 @@ module SimpleXlsxReader
 
     end
 
-    class Sheet < Struct.new(:name, :rows)
-      def headers
-        rows[0]
-      end
-
-      def data
-        rows[1..-1]
-      end
-
-      def load_errors
-        @load_errors ||= {}
-      end
-    end
   end
 end
