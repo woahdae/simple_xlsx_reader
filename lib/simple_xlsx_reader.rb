@@ -35,8 +35,13 @@ module SimpleXlsxReader
         self.new.tap do |xml|
           Zip::ZipFile.open(file_path) do |zip|
             xml.workbook       = Nokogiri::XML(zip.read('xl/workbook.xml'))
-            xml.shared_strings = Nokogiri::XML(zip.read('xl/sharedStrings.xml'))
             xml.styles         = Nokogiri::XML(zip.read('xl/styles.xml'))
+
+            # optional feature used by excel, but not often used by xlsx
+            # generation libraries
+            if zip.file.file?('xl/sharedStrings.xml')
+              xml.shared_strings = Nokogiri::XML(zip.read('xl/sharedStrings.xml'))
+            end
 
             xml.sheets = []
             i = 0
@@ -274,8 +279,14 @@ module SimpleXlsxReader
       # that puts all strings in a separate xml file, and then references
       # them by their index in that file.
       def shared_strings
-        @shared_strings ||= xml.shared_strings.
-          xpath('/xmlns:sst/xmlns:si/xmlns:t/text()').map(&:to_s)
+        @shared_strings ||= begin
+          if xml.shared_strings
+            xml.shared_strings.
+              xpath('/xmlns:sst/xmlns:si/xmlns:t/text()').map(&:to_s)
+          else
+            []
+          end
+        end
       end
 
     end
