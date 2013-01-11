@@ -6,7 +6,7 @@ require 'date'
 
 module SimpleXlsxReader
   def self.open(file_path)
-    Document.new(file_path).to_hash
+    Document.new(file_path).tap(&:sheets)
   end
 
   class Document
