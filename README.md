@@ -1,6 +1,81 @@
 # SimpleXlsxReader
 
-TODO: Write a gem description
+An xlsx reader for Ruby that parses xlsx cell values into plain ruby
+primitives and dates/times.
+
+This is *not* a rewrite of excel in Ruby. Font styles, for
+example, are parsed to determine whether a cell is a number or a date,
+then forgotten. We just want to get the data, and get out!
+
+## Usage
+
+### Summary:
+
+    doc = SimpleXlsxReader.open('/path/to/workbook.xlsx')
+    doc.sheets # => [<#SXR::Sheet>, ...]
+    doc.sheets.first.name # 'Sheet1'
+    doc.sheets.first.rows # [['Header 1', 'Header 2', ...]
+                             ['foo', 2, ...]]
+
+That's it!
+
+### Load Errors
+
+By default, cell load errors (ex. if a date cell contains the string
+'hello') result in a SimpleXlsxReader::CellLoadError.
+
+If you would like to provide better error feedback to your users, you
+can set `SimpleXlsxReader.configuration.catch_cell_load_errors =
+true`, and load errors will instead be inserted into Sheet#load_errors keyed
+by [rownum, colnum].
+
+### More
+
+Here's the totality of the public api, in code:
+
+    module SimpleXlsxReader
+      def self.open(file_path)
+        Document.new(file_path).tap(&:sheets)
+      end
+
+      class Document
+        attr_reader :file_path
+
+        def initialize(file_path)
+          @file_path = file_path
+        end
+
+        def sheets
+          @sheets ||= Mapper.new(xml).load_sheets
+        end
+
+        def to_hash
+          sheets.inject({}) {|acc, sheet| acc[sheet.name] = sheet.rows; acc}
+        end
+
+        def xml
+          Xml.load(file_path)
+        end
+
+        class Sheet < Struct.new(:name, :rows)
+          def headers
+            rows[0]
+          end
+
+          def data
+            rows[1..-1]
+          end
+
+          # Load errors will be a hash of the form:
+          # {
+          #   [rownum, colnum] => '[error]'
+          # }
+          def load_errors
+            @load_errors ||= {}
+          end
+        end
+      end
+    end
 
 ## Installation
 
@@ -15,10 +90,6 @@ And then execute:
 Or install it yourself as:
 
     $ gem install simple_xlsx_reader
-
-## Usage
-
-TODO: Write usage instructions here
 
 ## Contributing
 
