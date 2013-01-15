@@ -5,6 +5,14 @@ require 'zip/zipfilesystem'
 require 'date'
 
 module SimpleXlsxReader
+  class CellLoadError < StandardError; end
+
+  def self.configuration
+    @configuration ||= Struct.new(:catch_cell_load_errors).new.tap do |c|
+      c.catch_cell_load_errors = false
+    end
+  end
+
   def self.open(file_path)
     Document.new(file_path).tap(&:sheets)
   end
@@ -46,6 +54,8 @@ module SimpleXlsxReader
       end
     end
 
+    ##
+    # For internal use; stores source xml in nokogiri documents
     class Xml
       attr_accessor :workbook, :shared_strings, :sheets, :styles
 
@@ -75,12 +85,12 @@ module SimpleXlsxReader
       end
     end
 
+    ##
+    # For internal use; translates source xml to Sheet objects.
     class Mapper < Struct.new(:xml)
       def load_sheets
         sheet_toc.map do |(sheet_name, sheet_number)|
-          Sheet.new(sheet_name).tap do |sheet|
-            add_rows_to_sheet(sheet, sheet_number)
-          end
+          parse_sheet(sheet_name, xml.sheets[sheet_number])
         end
       end
 
@@ -96,14 +106,16 @@ module SimpleXlsxReader
         end
       end
 
-      def add_rows_to_sheet(sheet, sheet_number)
+      def parse_sheet(sheet_name, xsheet)
+        sheet = Sheet.new(sheet_name)
+
         rownum = -1
-        sheet.rows = xml.sheets[sheet_number].
-          xpath("/xmlns:worksheet/xmlns:sheetData/xmlns:row").map do |xrow|
+        sheet.rows =
+          xsheet.xpath("/xmlns:worksheet/xmlns:sheetData/xmlns:row").map do |xrow|
           rownum += 1
 
           colnum = -1
-          xrow.children.map do |xcell|
+          xrow.xpath('xmlns:c').map do |xcell|
             colnum += 1
 
             type = xcell.attributes['t'] &&
@@ -115,12 +127,21 @@ module SimpleXlsxReader
             begin
               self.class.cast(xcell.text, type, shared_strings: shared_strings)
             rescue => e
-              sheet.load_errors[[rownum, colnum]] = e.message
+              if !SimpleXlsxReader.configuration.catch_cell_load_errors
+                error = CellLoadError.new(
+                  "Row #{rownum}, Col #{colnum}: #{e.message}")
+                error.set_backtrace(e.backtrace)
+                raise error
+              else
+                sheet.load_errors[[rownum, colnum]] = e.message
 
-              xcell.text
+                xcell.text
+              end
             end
           end
         end
+
+        sheet
       end
 
       # Excel doesn't record types for some cells, only its display style, so
@@ -242,7 +263,7 @@ module SimpleXlsxReader
           days_since_1900, fraction_of_24 = value.split('.')
 
           # http://stackoverflow.com/questions/10559767/how-to-convert-ms-excel-date-from-float-to-date-format-in-ruby
-          date = Date.new(1899, 12, 30) + days_since_1900.to_i
+          date = Date.new(1899, 12, 30) + Integer(days_since_1900)
 
           if fraction_of_24 # there is a time associated
             fraction_of_24 = "0.#{fraction_of_24}".to_f
