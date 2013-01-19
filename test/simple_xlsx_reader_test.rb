@@ -66,9 +66,10 @@ describe SimpleXlsxReader do
           xml.sheets = [Nokogiri::XML(
             <<-XML
             <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+              <dimension ref="A1:A1" />
               <sheetData>
                 <row>
-                  <c s='0'>
+                  <c r='A1' s='0'>
                     <v>14 is a date style; this is not a date</v>
                   </c>
                 </row>
@@ -102,6 +103,47 @@ describe SimpleXlsxReader do
 
         sheet = described_class.new(xml).parse_sheet('test', xml.sheets.first)
         sheet.load_errors[[0,0]].must_include 'invalid value for Integer'
+      end
+    end
+
+    describe 'empty "Generic" cells' do
+      let(:xml) do
+        SimpleXlsxReader::Document::Xml.new.tap do |xml|
+          xml.sheets = [Nokogiri::XML(
+            <<-XML
+            <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+              <dimension ref="A1:C1" />
+              <sheetData>
+                <row>
+                  <c r='A1' s='0'>
+                    <v>Cell A</v>
+                  </c>
+                  <c r='C1' s='0'>
+                    <v>Cell C</v>
+                  </c>
+                </row>
+              </sheetData>
+            </worksheet>
+            XML
+          )]
+
+          # s='0' above refers to the value of numFmtId at cellXfs index 0,
+          # which is in this case 'General' type
+          xml.styles = Nokogiri::XML(
+            <<-XML
+            <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+              <cellXfs count="1">
+                <xf numFmtId="0" />
+              </cellXfs>
+            </styleSheet>
+            XML
+          )
+        end
+      end
+
+      it 'get parsed as nil' do
+        described_class.new(xml).parse_sheet('test', xml.sheets.first).
+          rows.must_equal [['Cell A', nil, 'Cell C']]
       end
     end
   end

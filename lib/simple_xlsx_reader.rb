@@ -109,14 +109,26 @@ module SimpleXlsxReader
       def parse_sheet(sheet_name, xsheet)
         sheet = Sheet.new(sheet_name)
 
+        last_column = xsheet.xpath('/xmlns:worksheet/xmlns:dimension').first.
+          attributes['ref'].value.match(/:([A-Z]*)[1-9]*/).captures.first
+
         rownum = -1
         sheet.rows =
           xsheet.xpath("/xmlns:worksheet/xmlns:sheetData/xmlns:row").map do |xrow|
           rownum += 1
 
-          colnum = -1
-          xrow.xpath('xmlns:c').map do |xcell|
+          colname = nil
+          colnum  = -1
+          cells   = []
+          while(colname != last_column) do
+            colname ? colname.next! : colname = 'A'
             colnum += 1
+
+            xcell = xrow.xpath(
+              %(xmlns:c[@r="#{colname + (rownum + 1).to_s}"])).first
+
+            # empty 'General' columns might not be in the xml
+            next cells << nil if xcell.nil?
 
             type = xcell.attributes['t'] &&
                    xcell.attributes['t'].value
@@ -124,8 +136,8 @@ module SimpleXlsxReader
             type ||= xcell.attributes['s'] &&
                      style_types[xcell.attributes['s'].value.to_i]
 
-            begin
-              self.class.cast(xcell.text, type, shared_strings: shared_strings)
+            cells << begin
+              self.class.cast(xcell.text.strip, type, shared_strings: shared_strings)
             rescue => e
               if !SimpleXlsxReader.configuration.catch_cell_load_errors
                 error = CellLoadError.new(
@@ -135,10 +147,12 @@ module SimpleXlsxReader
               else
                 sheet.load_errors[[rownum, colnum]] = e.message
 
-                xcell.text
+                xcell.text.strip
               end
             end
           end
+
+          cells
         end
 
         sheet
