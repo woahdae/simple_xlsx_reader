@@ -1,4 +1,4 @@
-require_relative 'test_helper'
+require 'test_helper'
 require 'time'
 
 describe SimpleXlsxReader do
@@ -27,7 +27,7 @@ describe SimpleXlsxReader do
 
     describe '::cast' do
       it 'reads type s as a shared string' do
-        described_class.cast('1', 's', shared_strings: ['a', 'b', 'c']).
+        described_class.cast('1', 's', :shared_strings => ['a', 'b', 'c']).
           must_equal 'b'
       end
 
