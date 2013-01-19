@@ -56,6 +56,64 @@ describe SimpleXlsxReader do
       end
     end
 
+    describe '#last_column' do
+
+      let(:generic_style) do
+          Nokogiri::XML(
+            <<-XML
+            <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+              <cellXfs count="1">
+                <xf numFmtId="0" />
+              </cellXfs>
+            </styleSheet>
+            XML
+          )
+      end
+
+      # Note, this is not a valid sheet, since the last cell is actually D1 but
+      # the dimension specifies C1. This is just for testing.
+      let(:sheet) do
+        Nokogiri::XML(
+          <<-XML
+          <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+            <dimension ref="A1:C1" />
+            <sheetData>
+              <row>
+                <c r='A1' s='0'>
+                  <v>Cell A</v>
+                </c>
+                <c r='C1' s='0'>
+                  <v>Cell C</v>
+                </c>
+                <c r='D1' s='0'>
+                  <v>Cell D</v>
+                </c>
+              </row>
+            </sheetData>
+          </worksheet>
+          XML
+        )
+      end
+
+      let(:xml) do
+        SimpleXlsxReader::Document::Xml.new.tap do |xml|
+          xml.sheets = [sheet]
+          xml.styles = generic_style
+        end
+      end
+
+      subject { described_class.new(xml) }
+
+      it 'uses /worksheet/dimension if available' do
+        subject.last_column(sheet).must_equal 'C'
+      end
+
+      it 'uses the last header cell if /worksheet/dimension is missing' do
+        sheet.xpath('/xmlns:worksheet/xmlns:dimension').remove
+        subject.last_column(sheet).must_equal 'D'
+      end
+    end
+
     describe "parse errors" do
       after do
         SimpleXlsxReader.configuration.catch_cell_load_errors = false

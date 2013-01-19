@@ -109,9 +109,7 @@ module SimpleXlsxReader
       def parse_sheet(sheet_name, xsheet)
         sheet = Sheet.new(sheet_name)
 
-        last_column = xsheet.xpath('/xmlns:worksheet/xmlns:dimension').first.
-          attributes['ref'].value.match(/:([A-Z]*)[1-9]*/).captures.first
-
+        last_column = last_column(xsheet)
         rownum = -1
         sheet.rows =
           xsheet.xpath("/xmlns:worksheet/xmlns:sheetData/xmlns:row").map do |xrow|
@@ -157,6 +155,28 @@ module SimpleXlsxReader
 
         sheet
       end
+
+      ##
+      # Returns the last column name, ex. 'E'
+      #
+      # Note that excel writes a '/worksheet/dimension' node we can get the
+      # last cell from, but some libs (ex. simple_xlsx_writer) don't record
+      # this. In that case, we assume the data is of uniform column length
+      # and check the column name of the last header row. Obviously this isn't
+      # the most robust strategy, but it likely fits 99% of use cases
+      # considering it's not a problem with actual excel docs.
+      def last_column(xsheet)
+        dimension = xsheet.xpath('/xmlns:worksheet/xmlns:dimension').first
+        if dimension
+          dimension.attributes['ref'].value.
+            match(/:([A-Z]*)[1-9]*/).captures.first
+        else
+          xsheet.at_xpath("/xmlns:worksheet/xmlns:sheetData/xmlns:row/xmlns:c[last()]").
+            attributes['r'].value.
+            match(/([A-Z]*)[1-9]*/).captures.first
+        end
+      end
+
 
       # Excel doesn't record types for some cells, only its display style, so
       # we have to back out the type from that style.
