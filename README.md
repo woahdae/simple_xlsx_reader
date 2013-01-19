@@ -91,6 +91,10 @@ Or install it yourself as:
 
     $ gem install simple_xlsx_reader
 
+## Versioning
+
+This project follows [semantic versioning 1.0](http://semver.org/spec/v1.0.0.html)
+
 ## Contributing
 
 1. Fork it
