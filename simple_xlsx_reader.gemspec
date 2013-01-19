@@ -15,6 +15,7 @@ Gem::Specification.new do |gem|
   gem.add_dependency 'nokogiri'
   gem.add_dependency 'rubyzip'
 
+  gem.add_development_dependency 'minitest'
   gem.add_development_dependency 'pry'
 
   gem.files         = `git ls-files`.split($/)
