@@ -1,3 +1,8 @@
+### 0.9.2
+
+* Support reading files written by ex. simple_xlsx_writer that don't
+  specify sheet dimensions explicitly (which Excel does).
+
 ### 0.9.1
 
 * Fixed an important parse bug that ignored empty 'Generic' cells
