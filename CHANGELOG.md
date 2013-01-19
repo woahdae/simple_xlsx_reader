@@ -1,3 +1,7 @@
+### 0.9.3
+
+* Support 1.8.7 (tests pass). Ongoing support will depend on ease.
+
 ### 0.9.2
 
 * Support reading files written by ex. simple_xlsx_writer that don't
