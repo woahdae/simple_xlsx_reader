@@ -122,8 +122,8 @@ module SimpleXlsxReader
             colname ? colname.next! : colname = 'A'
             colnum += 1
 
-            xcell = xrow.xpath(
-              %(xmlns:c[@r="#{colname + (rownum + 1).to_s}"])).first
+            xcell = xrow.at_xpath(
+              %(xmlns:c[@r="#{colname + (rownum + 1).to_s}"]))
 
             # empty 'General' columns might not be in the xml
             next cells << nil if xcell.nil?
@@ -166,7 +166,7 @@ module SimpleXlsxReader
       # the most robust strategy, but it likely fits 99% of use cases
       # considering it's not a problem with actual excel docs.
       def last_column(xsheet)
-        dimension = xsheet.xpath('/xmlns:worksheet/xmlns:dimension').first
+        dimension = xsheet.at_xpath('/xmlns:worksheet/xmlns:dimension')
         if dimension
           dimension.attributes['ref'].value.
             match(/:([A-Z]*)[1-9]*/).captures.first
@@ -371,7 +371,7 @@ module SimpleXlsxReader
           if xml.shared_strings
             xml.shared_strings.xpath('/xmlns:sst/xmlns:si').map do |xsst|
               # a shared string can be a single value...
-              sst = xsst.xpath('xmlns:t/text()').first
+              sst = xsst.at_xpath('xmlns:t/text()')
               sst = sst.text if sst
               # ... or a composite of seperately styled words/characters
               sst ||= xsst.xpath('xmlns:r/xmlns:t/text()').map(&:text).join
