@@ -204,15 +204,15 @@ module SimpleXlsxReader
         return nil if id.nil?
 
         id = id.to_i
-        if id > 164 # custom style, arg!
+        if id >= 164 # custom style, arg!
           custom_style_types[id]
         else # we should know this one
           NumFmtMap[id]
         end
       end
 
-      # Map of (numFmtId > 164) (custom styles) to our best guess at the type
-      # ex. {165 => :date_time}
+      # Map of (numFmtId >= 164) (custom styles) to our best guess at the type
+      # ex. {164 => :date_time}
       def custom_style_types
         @custom_style_types ||=
           xml.styles.xpath('/xmlns:styleSheet/xmlns:numFmts/xmlns:numFmt').

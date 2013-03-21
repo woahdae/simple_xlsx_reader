@@ -56,6 +56,23 @@ describe SimpleXlsxReader do
       end
     end
 
+    describe '#style_types' do
+      let(:xml) do
+        SimpleXlsxReader::Document::Xml.new.tap do |xml|
+          xml.styles = Nokogiri::XML(File.read(
+            File.join(File.dirname(__FILE__), 'styles.xml') ))
+        end
+      end
+
+      let(:mapper) do
+        SimpleXlsxReader::Document::Mapper.new(xml)
+      end
+
+      it 'reads custom formatted styles (numFmtId >= 164)' do
+        mapper.style_types[1].must_equal :date_time
+      end
+    end
+
     describe '#last_column' do
 
       let(:generic_style) do
