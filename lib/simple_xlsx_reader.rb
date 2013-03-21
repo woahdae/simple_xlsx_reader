@@ -168,12 +168,11 @@ module SimpleXlsxReader
       def last_column(xsheet)
         dimension = xsheet.at_xpath('/xmlns:worksheet/xmlns:dimension')
         if dimension
-          dimension.attributes['ref'].value.
-            match(/:([A-Z]*)[1-9]*/).captures.first
+          col = dimension.attributes['ref'].value.match(/:([A-Z]*)[1-9]*/)
+          col ? col.captures.first : 'A'
         else
-          xsheet.at_xpath("/xmlns:worksheet/xmlns:sheetData/xmlns:row/xmlns:c[last()]").
-            attributes['r'].value.
-            match(/([A-Z]*)[1-9]*/).captures.first
+          last = xsheet.at_xpath("/xmlns:worksheet/xmlns:sheetData/xmlns:row/xmlns:c[last()]")
+          last ? last.attributes['r'].value.match(/([A-Z]*)[1-9]*/).captures.first : 'A'
         end
       end
 

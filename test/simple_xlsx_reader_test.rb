@@ -112,6 +112,17 @@ describe SimpleXlsxReader do
         )
       end
 
+      let(:empty_sheet) do
+        Nokogiri::XML(
+          <<-XML
+          <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+            <dimension ref="A1" />
+            <sheetData>
+            </sheetData>
+          </worksheet>
+          XML
+        )
+      end
       let(:xml) do
         SimpleXlsxReader::Document::Xml.new.tap do |xml|
           xml.sheets = [sheet]
@@ -128,6 +139,15 @@ describe SimpleXlsxReader do
       it 'uses the last header cell if /worksheet/dimension is missing' do
         sheet.xpath('/xmlns:worksheet/xmlns:dimension').remove
         subject.last_column(sheet).must_equal 'D'
+      end
+
+      it 'returns "A" if the dimension is just one cell' do
+        subject.last_column(empty_sheet).must_equal 'A'
+      end
+
+      it 'returns "A" if the sheet is just one cell, but /worksheet/dimension is missing' do
+        sheet.at_xpath('/xmlns:worksheet/xmlns:dimension').remove
+        subject.last_column(empty_sheet).must_equal 'A'
       end
     end
 
