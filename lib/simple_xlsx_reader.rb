@@ -128,14 +128,13 @@ module SimpleXlsxReader
             # empty 'General' columns might not be in the xml
             next cells << nil if xcell.nil?
 
-            type = xcell.attributes['t'] &&
-                   xcell.attributes['t'].value
-            # If not the above, attempt to determine from a custom style
-            type ||= xcell.attributes['s'] &&
-                     style_types[xcell.attributes['s'].value.to_i]
+            type  = xcell.attributes['t'] &&
+                    xcell.attributes['t'].value
+            style = xcell.attributes['s'] &&
+                    style_types[xcell.attributes['s'].value.to_i]
 
             cells << begin
-              self.class.cast(xcell.text.strip, type, :shared_strings => shared_strings)
+              self.class.cast(xcell.text.strip, type, style, :shared_strings => shared_strings)
             rescue => e
               if !SimpleXlsxReader.configuration.catch_cell_load_errors
                 error = CellLoadError.new(
@@ -257,8 +256,14 @@ module SimpleXlsxReader
       #
       # options:
       # - shared_strings: needed for 's' (shared string) type
-      def self.cast(value, type, options = {})
+      def self.cast(value, type, style, options = {})
         return nil if value.nil? || value.empty?
+
+        # Sometimes the type is dictated by the style alone
+        if type.nil? ||
+          (type == 'n' && [:date, :time, :date_time].include?(style))
+          type = style
+        end
 
         case type
 

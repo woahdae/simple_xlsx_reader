@@ -27,13 +27,43 @@ describe SimpleXlsxReader do
 
     describe '::cast' do
       it 'reads type s as a shared string' do
-        described_class.cast('1', 's', :shared_strings => ['a', 'b', 'c']).
+        described_class.cast('1', 's', nil, :shared_strings => ['a', 'b', 'c']).
           must_equal 'b'
       end
 
       it 'reads type inlineStr as a string' do
         xml = Nokogiri::XML(%( <c t="inlineStr"><is><t>the value</t></is></c> ))
-        described_class.cast(xml.text, 'inlineStr').must_equal 'the value'
+        described_class.cast(xml.text, nil, 'inlineStr').must_equal 'the value'
+      end
+
+      it 'reads date styles' do
+        described_class.cast('41505', nil, :date).
+          must_equal Date.parse('2013-08-19')
+      end
+
+      it 'reads time styles' do
+        described_class.cast('41505.77084', nil, :time).
+          must_equal Time.parse('2013-08-19 18:30 UTC')
+      end
+
+      it 'reads date_time styles' do
+        described_class.cast('41505.77084', nil, :date_time).
+          must_equal Time.parse('2013-08-19 18:30 UTC')
+      end
+
+      it 'reads number types styled as dates' do
+        described_class.cast('41505', 'n', :date).
+          must_equal Date.parse('2013-08-19')
+      end
+
+      it 'reads number types styled as times' do
+        described_class.cast('41505.77084', 'n', :time).
+          must_equal Time.parse('2013-08-19 18:30 UTC')
+      end
+
+      it 'reads number types styled as date_times' do
+        described_class.cast('41505.77084', 'n', :date_time).
+          must_equal Time.parse('2013-08-19 18:30 UTC')
       end
     end
 
