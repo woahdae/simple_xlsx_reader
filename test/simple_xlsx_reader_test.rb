@@ -17,7 +17,8 @@ describe SimpleXlsxReader do
         "Posts"=>
           [["Author Name", "Title", "Body", "Created At", "Comment Count"],
            ["Big Bird", "The Number 1", "The Greatest", Time.parse("2002-01-01 11:00:00 UTC"), 1],
-           ["Big Bird", "The Number 2", "Second Best", Time.parse("2002-01-02 14:00:00 UTC"), 2]]
+           ["Big Bird", "The Number 2", "Second Best", Time.parse("2002-01-02 14:00:00 UTC"), 2],
+           ["Big Bird", "Formula Dates", "Tricky tricky", Time.parse("2002-01-03 14:00:00 UTC"), 0]]
       })
     end
   end
