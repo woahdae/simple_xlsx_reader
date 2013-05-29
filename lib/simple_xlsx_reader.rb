@@ -133,8 +133,11 @@ module SimpleXlsxReader
             style = xcell.attributes['s'] &&
                     style_types[xcell.attributes['s'].value.to_i]
 
+            xvalue = type == 'inlineStr' ?
+              xcell.at_xpath('xmlns:is/xmlns:t') : xcell.at_xpath('xmlns:v')
+
             cells << begin
-              self.class.cast(xcell.at_xpath('xmlns:v').text.strip, type, style, :shared_strings => shared_strings)
+              self.class.cast(xvalue.text.strip, type, style, :shared_strings => shared_strings)
             rescue => e
               if !SimpleXlsxReader.configuration.catch_cell_load_errors
                 error = CellLoadError.new(
