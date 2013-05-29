@@ -1,3 +1,7 @@
+### 0.9.5
+
+* Fix inlineStr support (broken by formula support commit)
+
 ### 0.9.4
 
 * Formula support. Formulas used to cause things to blow up, now they don't!
