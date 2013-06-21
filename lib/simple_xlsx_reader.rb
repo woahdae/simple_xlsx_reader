@@ -89,8 +89,8 @@ module SimpleXlsxReader
     # For internal use; translates source xml to Sheet objects.
     class Mapper < Struct.new(:xml)
       def load_sheets
-        sheet_toc.map do |(sheet_name, sheet_number)|
-          parse_sheet(sheet_name, xml.sheets[sheet_number])
+        sheet_toc.each_with_index.map do |(sheet_name, sheet_number), i|
+          parse_sheet(sheet_name, xml.sheets[i])  # sheet_number is *not* the index into xml.sheets
         end
       end
 
@@ -182,7 +182,7 @@ module SimpleXlsxReader
       # Excel doesn't record types for some cells, only its display style, so
       # we have to back out the type from that style.
       #
-      # Some of these styles can be determined from a known set (see NumFmtMap), 
+      # Some of these styles can be determined from a known set (see NumFmtMap),
       # while others are 'custom' and we have to make a best guess.
       #
       # This is the array of types corresponding to the styles a spreadsheet
