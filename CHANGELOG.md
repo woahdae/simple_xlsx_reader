@@ -1,3 +1,7 @@
+### 0.9.6
+
+* Fix worksheet indexes when worksheets have been deleted
+
 ### 0.9.5
 
 * Fix inlineStr support (broken by formula support commit)
