@@ -18,7 +18,8 @@ describe SimpleXlsxReader do
           [["Author Name", "Title", "Body", "Created At", "Comment Count"],
            ["Big Bird", "The Number 1", "The Greatest", Time.parse("2002-01-01 11:00:00 UTC"), 1],
            ["Big Bird", "The Number 2", "Second Best", Time.parse("2002-01-02 14:00:00 UTC"), 2],
-           ["Big Bird", "Formula Dates", "Tricky tricky", Time.parse("2002-01-03 14:00:00 UTC"), 0]]
+           ["Big Bird", "Formula Dates", "Tricky tricky", Time.parse("2002-01-03 14:00:00 UTC"), 0],
+           ["Empty Eagress", nil, "The title, date, and comment have types, but no values", nil, nil]]
       })
     end
   end
@@ -239,20 +240,25 @@ describe SimpleXlsxReader do
           xml.sheets = [Nokogiri::XML(
             <<-XML
               <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-                <dimension ref="A1:C1" />
+                <dimension ref="A1:G1" />
                 <sheetData>
                   <row>
                     <c r='A1' s='0'>
                       <v>Cell A1</v>
                     </c>
+
                     <c r='C1' s='1'>
                       <v>2.4</v>
                     </c>
-                    <c r='D1' s='14'>
-                      <v>01-06-84</v>
+                    <c r='D1' s='1' />
+
+                    <c r='E1' s='2'>
+                      <v>30687</v>
                     </c>
-                    <c r='E1' t='inlineStr' s='0'>
-                      <is><t>Cell E1</t></is>
+                    <c r='F1' s='2' />
+
+                    <c r='G1' t='inlineStr' s='0'>
+                      <is><t>Cell G1</t></is>
                     </c>
                   </row>
                 </sheetData>
@@ -274,34 +280,42 @@ describe SimpleXlsxReader do
             XML
           )
         end
+      end
 
-        before do
-          @rows = described_class.new(xml).parse_sheet('test', xml.sheets.first).rows
-        end
+      before do
+        @row = described_class.new(xml).parse_sheet('test', xml.sheets.first).rows[0]
+      end
 
-        it "reads 'Generic' cells as strings" do
-          @rows[0].must_equal "Cell A1"
-        end
+      it "reads 'Generic' cells as strings" do
+        @row[0].must_equal "Cell A1"
+      end
 
-        it "reads empty 'Generic' cells as nil" do
-          @rows[1].must_equal nil
-        end
+      it "reads empty 'Generic' cells as nil" do
+        @row[1].must_equal nil
+      end
 
-        # We could expand on these type tests, but really just a couple
-        # demonstrate that it's wired together. Type-specific tests should go
-        # on #cast
+      # We could expand on these type tests, but really just a couple
+      # demonstrate that it's wired together. Type-specific tests should go
+      # on #cast
 
-        it "reads floats" do
-          @rows[2].must_equal 2.4
-        end
+      it "reads floats" do
+        @row[2].must_equal 2.4
+      end
 
-        it "reads dates" do
-          @rows[3].must_equal Date.parse('Jan 6, 1984')
-        end
+      it "reads empty floats as nil" do
+        @row[3].must_equal nil
+      end
 
-        it "reads strings formatted as inlineStr" do
-          @rows[4].must_equal 'Cell E1'
-        end
+      it "reads dates" do
+        @row[4].must_equal Date.parse('Jan 6, 1984')
+      end
+
+      it "reads empty date cells as nil" do
+        @row[5].must_equal nil
+      end
+
+      it "reads strings formatted as inlineStr" do
+        @row[6].must_equal 'Cell G1'
       end
     end
   end
