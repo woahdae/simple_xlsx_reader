@@ -1,3 +1,9 @@
+### 0.9.7
+
+* Fix cell parsing where cells have a type, but no content
+* Add a speed test; parsing performs in linear time, but a relatively
+  slow line :/
+
 ### 0.9.6
 
 * Fix worksheet indexes when worksheets have been deleted
