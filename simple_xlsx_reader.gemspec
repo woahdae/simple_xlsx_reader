@@ -13,7 +13,7 @@ Gem::Specification.new do |gem|
   gem.homepage      = ""
 
   gem.add_dependency 'nokogiri'
-  gem.add_dependency 'rubyzip'
+  gem.add_dependency 'zip'
 
   gem.add_development_dependency 'minitest'
   gem.add_development_dependency 'pry'
