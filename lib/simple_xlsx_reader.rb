@@ -1,8 +1,20 @@
 require "simple_xlsx_reader/version"
 require 'nokogiri'
-require 'zip/zip'
-require 'zip/zipfilesystem'
 require 'date'
+
+# Rubyzip 1.0 only has different naming, everything else is the same, so let's
+# be flexible so we don't force people into a dependency hell w/ other gems.
+begin
+  # Try loading rubyzip < 1.0
+  require 'zip/zip'
+  require 'zip/zipfilesystem'
+  SimpleXlsxReader::Zip = Zip::ZipFile
+rescue LoadError
+  # Try loading rubyzip >= 1.0
+  require 'zip'
+  require 'zip/filesystem'
+  SimpleXlsxReader::Zip = Zip::File
+end
 
 module SimpleXlsxReader
   class CellLoadError < StandardError; end
@@ -61,7 +73,7 @@ module SimpleXlsxReader
 
       def self.load(file_path)
         self.new.tap do |xml|
-          Zip::ZipFile.open(file_path) do |zip|
+          SimpleXlsxReader::Zip.open(file_path) do |zip|
             xml.workbook       = Nokogiri::XML(zip.read('xl/workbook.xml'))
             xml.styles         = Nokogiri::XML(zip.read('xl/styles.xml'))
 
