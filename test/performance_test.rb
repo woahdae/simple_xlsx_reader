@@ -1,7 +1,7 @@
 require 'test_helper'
 require 'minitest/benchmark'
 
-describe SimpleXlsxReader do
+describe 'SimpleXlsxReader Benchmark' do
 
   # n is 0-indexed for us, then converted to 1-indexed for excel
   def build_row(n)

@@ -1,6 +1,6 @@
 gem 'minitest'
-require 'minitest/spec'
 require 'minitest/autorun'
+require 'minitest/spec'
 require 'pry'
 
 $:.unshift File.expand_path("lib")
