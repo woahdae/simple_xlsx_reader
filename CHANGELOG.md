@@ -1,3 +1,7 @@
+### 0.9.8
+
+* Rubyzip 1.0 compatability
+
 ### 0.9.7
 
 * Fix cell parsing where cells have a type, but no content
