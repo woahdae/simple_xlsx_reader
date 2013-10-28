@@ -12,7 +12,9 @@ describe SimpleXlsxReader do
       subject.to_hash.must_equal({
         "Authors"=>
           [["Name", "Occupation"],
-           ["Big Bird", "Teacher"]],
+           ["Big Bird", "Teacher"],
+           [nil, nil],
+           ["Small Bird", "Cleaner"]],
 
         "Posts"=>
           [["Author Name", "Title", "Body", "Created At", "Comment Count"],
@@ -105,7 +107,7 @@ describe SimpleXlsxReader do
       end
     end
 
-    describe '#last_column' do
+    describe '#dimensions' do
 
       let(:generic_style) do
           Nokogiri::XML(
@@ -120,14 +122,14 @@ describe SimpleXlsxReader do
       end
 
       # Note, this is not a valid sheet, since the last cell is actually D1 but
-      # the dimension specifies C1. This is just for testing.
+      # the dimension specifies C2. This is just for testing.
       let(:sheet) do
         Nokogiri::XML(
           <<-XML
           <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-            <dimension ref="A1:C1" />
+            <dimension ref="A1:C2" />
             <sheetData>
-              <row>
+              <row r='1'>
                 <c r='A1' s='0'>
                   <v>Cell A</v>
                 </c>
@@ -166,21 +168,21 @@ describe SimpleXlsxReader do
       subject { described_class.new(xml) }
 
       it 'uses /worksheet/dimension if available' do
-        subject.last_column(sheet).must_equal 'C'
+        subject.dimensions(sheet).must_equal ['A'..'C', '1'..'2']
       end
 
       it 'uses the last header cell if /worksheet/dimension is missing' do
         sheet.xpath('/xmlns:worksheet/xmlns:dimension').remove
-        subject.last_column(sheet).must_equal 'D'
+        subject.dimensions(sheet).must_equal ['A'..'D', '1'..'1']
       end
 
-      it 'returns "A" if the dimension is just one cell' do
-        subject.last_column(empty_sheet).must_equal 'A'
+      it 'returns "A".."A", "1".."1" if the dimension is just one cell' do
+        subject.dimensions(empty_sheet).must_equal ['A'..'A', '1'..'1']
       end
 
-      it 'returns "A" if the sheet is just one cell, but /worksheet/dimension is missing' do
+      it 'returns "A".."A", "1".."1" if the sheet is just one cell, but /worksheet/dimension is missing' do
         sheet.at_xpath('/xmlns:worksheet/xmlns:dimension').remove
-        subject.last_column(empty_sheet).must_equal 'A'
+        subject.dimensions(empty_sheet).must_equal ['A'..'A', '1'..'1']
       end
     end
 
@@ -196,7 +198,7 @@ describe SimpleXlsxReader do
             <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
               <dimension ref="A1:A1" />
               <sheetData>
-                <row>
+                <row r='1'>
                   <c r='A1' s='0'>
                     <v>14 is a date style; this is not a date</v>
                   </c>
@@ -242,7 +244,7 @@ describe SimpleXlsxReader do
               <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
                 <dimension ref="A1:G1" />
                 <sheetData>
-                  <row>
+                  <row r='1'>
                     <c r='A1' s='0'>
                       <v>Cell A1</v>
                     </c>

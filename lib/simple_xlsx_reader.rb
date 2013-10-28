@@ -120,22 +120,26 @@ module SimpleXlsxReader
 
       def parse_sheet(sheet_name, xsheet)
         sheet = Sheet.new(sheet_name)
+        sheet.rows = []
 
-        last_column = last_column(xsheet)
-        rownum = -1
-        sheet.rows =
-          xsheet.xpath("/xmlns:worksheet/xmlns:sheetData/xmlns:row").map do |xrow|
-          rownum += 1
+        column_names, row_names = dimensions(xsheet)
 
-          colname = nil
-          colnum  = -1
-          cells   = []
-          while(colname != last_column) do
-            colname ? colname.next! : colname = 'A'
-            colnum += 1
+        xsheetdata = xsheet.at_xpath(%(/xmlns:worksheet/xmlns:sheetData))
 
-            xcell = xrow.at_xpath(
-              %(xmlns:c[@r="#{colname + (rownum + 1).to_s}"]))
+        row_names.each do |row_name|
+          xrow = xsheetdata.at_xpath(%(xmlns:row[@r="#{row_name}"]))
+
+          cells = []
+
+          col_num = -1
+          column_names.each do |col_name|
+            col_num += 1
+
+            if xrow
+              xcell = xrow.at_xpath(%(xmlns:c[@r="#{col_name}#{row_name}"]))
+            else
+              xcell = nil
+            end
 
             # empty 'General' columns might not be in the xml
             next cells << nil if xcell.nil?
@@ -152,27 +156,27 @@ module SimpleXlsxReader
               self.class.cast(xvalue && xvalue.text.strip, type, style,
                               :shared_strings => shared_strings)
             rescue => e
+              row_num = row_name.to_i - 1
               if !SimpleXlsxReader.configuration.catch_cell_load_errors
                 error = CellLoadError.new(
-                  "Row #{rownum}, Col #{colnum}: #{e.message}")
+                  "Row #{row_num}, Col #{col_num}: #{e.message}")
                 error.set_backtrace(e.backtrace)
                 raise error
               else
-                sheet.load_errors[[rownum, colnum]] = e.message
-
+                sheet.load_errors[[row_num, col_num]] = e.message
                 xcell.text.strip
               end
             end
           end
 
-          cells
+          sheet.rows << cells
         end
 
         sheet
       end
 
       ##
-      # Returns the last column name, ex. 'E'
+      # Returns the dimensions, ex. ["A".."Z", "1".."20"]
       #
       # Note that excel writes a '/worksheet/dimension' node we can get the
       # last cell from, but some libs (ex. simple_xlsx_writer) don't record
@@ -180,17 +184,29 @@ module SimpleXlsxReader
       # and check the column name of the last header row. Obviously this isn't
       # the most robust strategy, but it likely fits 99% of use cases
       # considering it's not a problem with actual excel docs.
-      def last_column(xsheet)
+      def dimensions(xsheet)
         dimension = xsheet.at_xpath('/xmlns:worksheet/xmlns:dimension')
         if dimension
-          col = dimension.attributes['ref'].value.match(/:([A-Z]*)[1-9]*/)
-          col ? col.captures.first : 'A'
+          match = dimension.attributes['ref'].value.match(/([A-Z])+([0-9]+):([A-Z])+([0-9]+)/)
+          if match
+            c = match.captures
+            return [c[0]..c[2], c[1]..c[3]]
+          end
         else
-          last = xsheet.at_xpath("/xmlns:worksheet/xmlns:sheetData/xmlns:row/xmlns:c[last()]")
-          last ? last.attributes['r'].value.match(/([A-Z]*)[1-9]*/).captures.first : 'A'
+          first = xsheet.at_xpath("/xmlns:worksheet/xmlns:sheetData/xmlns:row[1]/xmlns:c[1]")
+          last  = xsheet.at_xpath("/xmlns:worksheet/xmlns:sheetData/xmlns:row[last()]/xmlns:c[last()]")
+          if first && last
+            first_match = first.attributes['r'].value.match(/([A-Z]+)([0-9]+)/)
+            last_match  = last.attributes['r'].value.match(/([A-Z]+)([0-9]+)/)
+            if first_match && last_match
+              fc = first_match.captures
+              lc = last_match.captures
+              return [fc[0]..lc[0], fc[1]..lc[1]]
+            end
+          end
         end
+        ["A".."A", "1".."1"]
       end
-
 
       # Excel doesn't record types for some cells, only its display style, so
       # we have to back out the type from that style.

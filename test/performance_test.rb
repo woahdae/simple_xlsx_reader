@@ -7,7 +7,7 @@ describe 'SimpleXlsxReader Benchmark' do
   def build_row(n)
     n += 1
     <<-XML
-      <row>
+      <row r='#{n}'>
         <c r='A#{n}' s='0'>
           <v>Cell A#{n}</v>
         </c>
@@ -85,7 +85,7 @@ describe 'SimpleXlsxReader Benchmark' do
 
       range.times do |n|
         sheet.xpath("/xmlns:worksheet/xmlns:sheetData/xmlns:row").last.
-          add_next_sibling(build_row(n))
+          add_next_sibling(build_row(n+1))
       end
 
       @xml.sheets[range] = sheet
@@ -96,7 +96,7 @@ describe 'SimpleXlsxReader Benchmark' do
     bench_exp(1,1000)
   end
 
-  bench_performance_linear 'parses sheets in linear time', 0.9999 do |n|
+  bench_performance_linear 'parses sheets in linear time', 0.99 do |n|
 
     raise "not enough sample data; asked for #{n}, only have #{@xml.sheets.count}"\
       if @xml.sheets[n].nil?
