@@ -120,43 +120,57 @@ module SimpleXlsxReader
 
       def parse_sheet(sheet_name, xsheet)
         sheet = Sheet.new(sheet_name)
+
+        col_names, row_names = dimensions(xsheet)
+
+        # A corresponds to 1,
+        # Z corresponds to 26,
+        # AA corresponds to 27, and
+        # IV corresponds to 256.
+        col_index = {}
+        col_names.each do |col_name|
+          value = 0
+          i = 0
+          col_name.each_byte do |c|
+            ic = c - 64
+            value += ic * 26 ** i
+            i += 1
+          end
+          col_index[col_name] = value
+        end
+        col_count = col_index.size
+
+        # Create rows and cols filled with nils.
         sheet.rows = []
+        row_names.each do |_|
+          sheet.rows << Array.new(col_count)
+        end
 
-        column_names, row_names = dimensions(xsheet)
-
-        xsheetdata = xsheet.at_xpath(%(/xmlns:worksheet/xmlns:sheetData))
-
-        row_names.each do |row_name|
-          xrow = xsheetdata.at_xpath(%(xmlns:row[@r="#{row_name}"]))
-
-          cells = []
-
-          col_num = -1
-          column_names.each do |col_name|
-            col_num += 1
-
-            if xrow
-              xcell = xrow.at_xpath(%(xmlns:c[@r="#{col_name}#{row_name}"]))
-            else
-              xcell = nil
-            end
-
-            # empty 'General' columns might not be in the xml
-            next cells << nil if xcell.nil?
-
+        xsheet.xpath(%(/xmlns:worksheet/xmlns:sheetData/xmlns:row)).each do |xrow|
+          xrow.xpath(%(xmlns:c)).each do |xcell|
             type  = xcell.attributes['t'] &&
                     xcell.attributes['t'].value
             style = xcell.attributes['s'] &&
                     style_types[xcell.attributes['s'].value.to_i]
 
+            cell_name = xcell.attributes['r'] &&
+                        xcell.attributes['r'].value
+
+            match = cell_name.match(/([A-Z]+)([0-9]+)/)
+
+            col_name = match.captures[0]
+            row_name = match.captures[1]
+
+            col_num = col_index[col_name] - 1
+            row_num = row_name.to_i - 1
+
             xvalue = type == 'inlineStr' ?
               xcell.at_xpath('xmlns:is/xmlns:t') : xcell.at_xpath('xmlns:v')
 
-            cells << begin
-              self.class.cast(xvalue && xvalue.text.strip, type, style,
+            sheet.rows[row_num][col_num] = begin
+              value = self.class.cast(xvalue && xvalue.text.strip, type, style,
                               :shared_strings => shared_strings)
             rescue => e
-              row_num = row_name.to_i - 1
               if !SimpleXlsxReader.configuration.catch_cell_load_errors
                 error = CellLoadError.new(
                   "Row #{row_num}, Col #{col_num}: #{e.message}")
@@ -168,8 +182,6 @@ module SimpleXlsxReader
               end
             end
           end
-
-          sheet.rows << cells
         end
 
         sheet
