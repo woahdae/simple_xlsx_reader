@@ -138,7 +138,7 @@ module SimpleXlsxReader
               %(xmlns:c[@r="#{colname + (rownum + 1).to_s}"]))
 
             # try to bridge a gap in row numbers
-            if xcell.nil? && xrow.attr('r') =~ /\d/
+            if xcell.nil? && xrow.attr('r') =~ /\b\d+\b/
               r = xrow.attr('r').to_i
               xcell = xrow.at_xpath(
                 %(xmlns:c[@r="#{colname + (r).to_s}"]))
