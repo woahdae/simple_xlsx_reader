@@ -137,6 +137,14 @@ module SimpleXlsxReader
             xcell = xrow.at_xpath(
               %(xmlns:c[@r="#{colname + (rownum + 1).to_s}"]))
 
+            # try to bridge a gap in row numbers
+            if xcell.nil? && xrow.attr('r') =~ /\d/
+              r = xrow.attr('r').to_i
+              xcell = xrow.at_xpath(
+                %(xmlns:c[@r="#{colname + (r).to_s}"]))
+              rownum = r if xcell
+            end
+
             # empty 'General' columns might not be in the xml
             next cells << nil if xcell.nil?
 
