@@ -321,11 +321,9 @@ module SimpleXlsxReader
 
           if fraction_of_24 # there is a time associated
             fraction_of_24 = "0.#{fraction_of_24}".to_f
-            military       = fraction_of_24 * 24
-            hour           = military.truncate
-            minute         = ((military % 1) * 60).truncate
+            seconds        = (fraction_of_24 * 86400).round
 
-            return Time.utc(date.year, date.month, date.day, hour, minute)
+            return Time.utc(date.year, date.month, date.day) + seconds
           else
             return date
           end
