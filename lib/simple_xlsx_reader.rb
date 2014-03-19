@@ -74,13 +74,13 @@ module SimpleXlsxReader
       def self.load(file_path)
         self.new.tap do |xml|
           SimpleXlsxReader::Zip.open(file_path) do |zip|
-            xml.workbook       = Nokogiri::XML(zip.read('xl/workbook.xml'))
-            xml.styles         = Nokogiri::XML(zip.read('xl/styles.xml'))
+            xml.workbook = Nokogiri::XML(zip.read('xl/workbook.xml')).remove_namespaces!
+            xml.styles   = Nokogiri::XML(zip.read('xl/styles.xml')).remove_namespaces!
 
             # optional feature used by excel, but not often used by xlsx
             # generation libraries
             if zip.file.file?('xl/sharedStrings.xml')
-              xml.shared_strings = Nokogiri::XML(zip.read('xl/sharedStrings.xml'))
+              xml.shared_strings = Nokogiri::XML(zip.read('xl/sharedStrings.xml')).remove_namespaces!
             end
 
             xml.sheets = []
@@ -90,7 +90,7 @@ module SimpleXlsxReader
               break if !zip.file.file?("xl/worksheets/sheet#{i}.xml")
 
               xml.sheets <<
-                Nokogiri::XML(zip.read("xl/worksheets/sheet#{i}.xml"))
+                Nokogiri::XML(zip.read("xl/worksheets/sheet#{i}.xml")).remove_namespaces!
             end
           end
         end
@@ -108,7 +108,7 @@ module SimpleXlsxReader
 
       # Table of contents for the sheets, ex. {'Authors' => 0, ...}
       def sheet_toc
-        xml.workbook.xpath('/xmlns:workbook/xmlns:sheets/xmlns:sheet').
+        xml.workbook.xpath('/workbook/sheets/sheet').
           inject({}) do |acc, sheet|
 
           acc[sheet.attributes['name'].value] =
@@ -123,7 +123,7 @@ module SimpleXlsxReader
         sheet_width, sheet_height = *sheet_dimensions(xsheet)
 
         sheet.rows = Array.new(sheet_height) { Array.new(sheet_width) }
-        xsheet.xpath("/xmlns:worksheet/xmlns:sheetData/xmlns:row/xmlns:c").each do |xcell|
+        xsheet.xpath("/worksheet/sheetData/row/c").each do |xcell|
           column, row = *xcell.attr('r').match(/([A-Z]+)([0-9]+)/).captures
           col_idx = column_letter_to_number(column) - 1
           row_idx = row.to_i - 1
@@ -134,7 +134,7 @@ module SimpleXlsxReader
                   style_types[xcell.attributes['s'].value.to_i]
 
           xvalue = type == 'inlineStr' ?
-            xcell.at_xpath('xmlns:is/xmlns:t') : xcell.at_xpath('xmlns:v')
+            xcell.at_xpath('is/t') : xcell.at_xpath('v')
 
           cell = begin
             self.class.cast(xvalue && xvalue.text.strip, type, style,
@@ -173,12 +173,12 @@ module SimpleXlsxReader
       # the most robust strategy, but it likely fits 99% of use cases
       # considering it's not a problem with actual excel docs.
       def last_cell_label(xsheet)
-        dimension = xsheet.at_xpath('/xmlns:worksheet/xmlns:dimension')
+        dimension = xsheet.at_xpath('/worksheet/dimension')
         if dimension
           col = dimension.attributes['ref'].value.match(/:([A-Z]+[0-9]+)/)
           col ? col.captures.first : 'A1'
         else
-          last = xsheet.at_xpath("/xmlns:worksheet/xmlns:sheetData/xmlns:row[last()]/xmlns:c[last()]")
+          last = xsheet.at_xpath("/worksheet/sheetData/row[last()]/c[last()]")
           last ? last.attributes['r'].value.match(/([A-Z]+[0-9]+)/).captures.first : 'A1'
         end
       end
@@ -226,7 +226,7 @@ module SimpleXlsxReader
       # type.
       def style_types
         @style_types ||=
-          xml.styles.xpath('/xmlns:styleSheet/xmlns:cellXfs/xmlns:xf').map {|xstyle|
+          xml.styles.xpath('/styleSheet/cellXfs/xf').map {|xstyle|
             style_type_by_num_fmt_id(xstyle.attributes['numFmtId'].value)}
       end
 
@@ -247,7 +247,7 @@ module SimpleXlsxReader
       # ex. {164 => :date_time}
       def custom_style_types
         @custom_style_types ||=
-          xml.styles.xpath('/xmlns:styleSheet/xmlns:numFmts/xmlns:numFmt').
+          xml.styles.xpath('/styleSheet/numFmts/numFmt').
           inject({}) do |acc, xstyle|
 
           acc[xstyle.attributes['numFmtId'].value.to_i] =
@@ -405,12 +405,12 @@ module SimpleXlsxReader
       def shared_strings
         @shared_strings ||= begin
           if xml.shared_strings
-            xml.shared_strings.xpath('/xmlns:sst/xmlns:si').map do |xsst|
+            xml.shared_strings.xpath('/sst/si').map do |xsst|
               # a shared string can be a single value...
-              sst = xsst.at_xpath('xmlns:t/text()')
+              sst = xsst.at_xpath('t/text()')
               sst = sst.text if sst
               # ... or a composite of seperately styled words/characters
-              sst ||= xsst.xpath('xmlns:r/xmlns:t/text()').map(&:text).join
+              sst ||= xsst.xpath('r/t/text()').map(&:text).join
             end
           else
             []

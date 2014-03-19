@@ -58,8 +58,8 @@ describe 'SimpleXlsxReader Benchmark' do
           </sheetData>
         </worksheet>
       XML
-    )
-    base.at_xpath("/xmlns:worksheet/xmlns:sheetData").add_child(build_row(0))
+    ).remove_namespaces!
+    base.at_xpath("/worksheet/sheetData").add_child(build_row(0))
 
     @xml = SimpleXlsxReader::Document::Xml.new.tap do |xml|
       xml.sheets = [base]
@@ -76,7 +76,7 @@ describe 'SimpleXlsxReader Benchmark' do
             </cellXfs>
           </styleSheet>
         XML
-      )
+      ).remove_namespaces!
     end
 
     # Every new sheet has one more row
@@ -84,7 +84,7 @@ describe 'SimpleXlsxReader Benchmark' do
       sheet = base.clone
 
       range.times do |n|
-        sheet.xpath("/xmlns:worksheet/xmlns:sheetData/xmlns:row").last.
+        sheet.xpath("/worksheet/sheetData/row").last.
           add_next_sibling(build_row(n+1))
       end
 

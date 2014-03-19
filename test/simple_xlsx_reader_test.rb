@@ -73,7 +73,7 @@ describe SimpleXlsxReader do
       let(:xml) do
         SimpleXlsxReader::Document::Xml.new.tap do |xml|
           xml.shared_strings = Nokogiri::XML(File.read(
-            File.join(File.dirname(__FILE__), 'shared_strings.xml') ))
+            File.join(File.dirname(__FILE__), 'shared_strings.xml') )).remove_namespaces!
         end
       end
 
@@ -92,7 +92,7 @@ describe SimpleXlsxReader do
       let(:xml) do
         SimpleXlsxReader::Document::Xml.new.tap do |xml|
           xml.styles = Nokogiri::XML(File.read(
-            File.join(File.dirname(__FILE__), 'styles.xml') ))
+            File.join(File.dirname(__FILE__), 'styles.xml') )).remove_namespaces!
         end
       end
 
@@ -116,7 +116,7 @@ describe SimpleXlsxReader do
               </cellXfs>
             </styleSheet>
             XML
-          )
+          ).remove_namespaces!
       end
 
       # Note, this is not a valid sheet, since the last cell is actually D1 but
@@ -141,7 +141,7 @@ describe SimpleXlsxReader do
             </sheetData>
           </worksheet>
           XML
-        )
+        ).remove_namespaces!
       end
 
       let(:empty_sheet) do
@@ -153,7 +153,7 @@ describe SimpleXlsxReader do
             </sheetData>
           </worksheet>
           XML
-        )
+        ).remove_namespaces!
       end
 
       let(:xml) do
@@ -170,7 +170,7 @@ describe SimpleXlsxReader do
       end
 
       it 'uses the last header cell if /worksheet/dimension is missing' do
-        sheet.xpath('/xmlns:worksheet/xmlns:dimension').remove
+        sheet.xpath('/worksheet/dimension').remove
         subject.last_cell_label(sheet).must_equal 'D1'
       end
 
@@ -179,7 +179,7 @@ describe SimpleXlsxReader do
       end
 
       it 'returns "A1" if the sheet is just one cell, but /worksheet/dimension is missing' do
-        sheet.at_xpath('/xmlns:worksheet/xmlns:dimension').remove
+        sheet.at_xpath('/worksheet/dimension').remove
         subject.last_cell_label(empty_sheet).must_equal 'A1'
       end
     end
@@ -228,7 +228,7 @@ describe SimpleXlsxReader do
               </sheetData>
             </worksheet>
             XML
-          )]
+          ).remove_namespaces!]
 
           # s='0' above refers to the value of numFmtId at cellXfs index 0
           xml.styles = Nokogiri::XML(
@@ -239,7 +239,7 @@ describe SimpleXlsxReader do
               </cellXfs>
             </styleSheet>
             XML
-          )
+          ).remove_namespaces!
         end
       end
 
@@ -288,7 +288,7 @@ describe SimpleXlsxReader do
                 </sheetData>
               </worksheet>
             XML
-          )]
+          ).remove_namespaces!]
 
           # s='0' above refers to the value of numFmtId at cellXfs index 0,
           # which is in this case 'General' type
@@ -302,7 +302,7 @@ describe SimpleXlsxReader do
                 </cellXfs>
               </styleSheet>
             XML
-          )
+          ).remove_namespaces!
         end
       end
 
@@ -374,7 +374,7 @@ describe SimpleXlsxReader do
                 </sheetData>
               </worksheet>
             XML
-          )]
+          ).remove_namespaces!]
 
           xml.styles = Nokogiri::XML(
             <<-XML
@@ -384,7 +384,7 @@ describe SimpleXlsxReader do
                 </cellXfs>
               </styleSheet>
             XML
-          )
+          ).remove_namespaces!
         end
       end
 
