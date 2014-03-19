@@ -318,5 +318,84 @@ describe SimpleXlsxReader do
         @row[6].must_equal 'Cell G1'
       end
     end
+
+    describe 'parsing documents with blank rows' do
+      let(:xml) do
+        SimpleXlsxReader::Document::Xml.new.tap do |xml|
+          xml.sheets = [Nokogiri::XML(
+            <<-XML
+              <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+                <dimension ref="A1:G1" />
+                <sheetData>
+                <row ht="21" r="1" spans="1:1">
+                  <c r="A1" s="1" t="s">
+                    <v>0</v>
+                  </c>
+                </row>
+                <row r="3" spans="1:1">
+                  <c r="A3" s="2" t="s">
+                    <v>1</v>
+                  </c>
+                </row>
+                <row r="4" spans="1:1">
+                  <c r="A4" s="2" t="s">
+                    <v>2</v>
+                  </c>
+                </row>
+                <row r="6" spans="1:1">
+                  <c r="A6" s="2" t="s">
+                    <v>3</v>
+                  </c>
+                </row>
+                </sheetData>
+              </worksheet>
+            XML
+          )]
+
+          xml.shared_strings =
+            Nokogiri::XML(
+              <<-XML 
+                <sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="134" uniqueCount="134">
+                  <si>
+                    <t>Grimm Artisanal Ales</t>
+                  </si>
+                  <si>
+                    <t>From the Hip- Belgian-Style Blonde Ale brewed with Rose Hips 1/6 bbl</t>
+                  </si>
+                  <si>
+                    <t>Bees in the Trappe- Biere de Miel (Tripple) 8% 1/6 bbl</t>
+                  </si>
+                  <si>
+                    <t>Bees in the Trappe 22 oz</t>
+                  </si>
+                </sst>
+              XML
+            )
+
+          xml.styles = Nokogiri::XML(
+            <<-XML
+              <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+                <cellXfs count="1">
+                  <xf numFmtId="0" />
+                  <xf numFmtId="2" />
+                  <xf numFmtId="14" />
+                </cellXfs>
+              </styleSheet>
+            XML
+          )
+        end
+      end
+
+      before do
+        @rows = described_class.new(xml).parse_sheet('test', xml.sheets.first).rows.map {|r| r[0]}
+      end
+
+      it "reads row data despite gaps in row numbering" do
+        @rows[0].must_equal "Grimm Artisanal Ales"
+        @rows[1].must_equal "From the Hip- Belgian-Style Blonde Ale brewed with Rose Hips 1/6 bbl"
+        @rows[3].must_equal "Bees in the Trappe 22 oz"
+      end
+    end
+
   end
 end
