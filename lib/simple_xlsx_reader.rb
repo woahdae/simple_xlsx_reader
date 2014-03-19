@@ -133,8 +133,19 @@ module SimpleXlsxReader
           style = xcell.attributes['s'] &&
                   style_types[xcell.attributes['s'].value.to_i]
 
+          # This is the main performance bottleneck. Using just 'xcell.text'
+          # would be ideal, and makes parsing super-fast. However, there's
+          # other junk in the cell, formula references in particular,
+          # so we really do have to look for specific value nodes.
+          # Maybe there is a really clever way to use xcell.text and parse out
+          # the correct value, but I can't think of one, or an alternative
+          # strategy.
+          #
+          # And yes, this really is faster than using xcell.at_xpath(...),
+          # by about 60%. Odd.
           xvalue = type == 'inlineStr' ?
-            xcell.at_xpath('is/t') : xcell.at_xpath('v')
+            (xis = xcell.children.find {|c| c.name == 'is'}) && xis.children.find {|c| c.name == 't'} :
+            xcell.children.find {|c| c.name == 'v'}
 
           cell = begin
             self.class.cast(xvalue && xvalue.text.strip, type, style,

@@ -93,7 +93,7 @@ describe 'SimpleXlsxReader Benchmark' do
   end
 
   def self.bench_range
-    bench_exp(1,1000)
+    bench_exp(1,10000)
   end
 
   bench_performance_linear 'parses sheets in linear time', 0.9999 do |n|
