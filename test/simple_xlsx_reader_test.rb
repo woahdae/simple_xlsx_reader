@@ -44,12 +44,12 @@ describe SimpleXlsxReader do
       end
 
       it 'reads time styles' do
-        described_class.cast('41505.77084', nil, :time).
+        described_class.cast('41505.77083', nil, :time).
           must_equal Time.parse('2013-08-19 18:30 UTC')
       end
 
       it 'reads date_time styles' do
-        described_class.cast('41505.77084', nil, :date_time).
+        described_class.cast('41505.77083', nil, :date_time).
           must_equal Time.parse('2013-08-19 18:30 UTC')
       end
 
@@ -59,12 +59,12 @@ describe SimpleXlsxReader do
       end
 
       it 'reads number types styled as times' do
-        described_class.cast('41505.77084', 'n', :time).
+        described_class.cast('41505.77083', 'n', :time).
           must_equal Time.parse('2013-08-19 18:30 UTC')
       end
 
       it 'reads number types styled as date_times' do
-        described_class.cast('41505.77084', 'n', :date_time).
+        described_class.cast('41505.77083', 'n', :date_time).
           must_equal Time.parse('2013-08-19 18:30 UTC')
       end
     end
