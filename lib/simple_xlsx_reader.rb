@@ -101,7 +101,7 @@ module SimpleXlsxReader
     # For internal use; translates source xml to Sheet objects.
     class Mapper < Struct.new(:xml)
       def load_sheets
-        sheet_toc.each_with_index.map do |(sheet_name, sheet_number), i|
+        sheet_toc.each_with_index.map do |(sheet_name, _sheet_number), i|
           parse_sheet(sheet_name, xml.sheets[i])  # sheet_number is *not* the index into xml.sheets
         end
       end
@@ -120,60 +120,44 @@ module SimpleXlsxReader
 
       def parse_sheet(sheet_name, xsheet)
         sheet = Sheet.new(sheet_name)
+        sheet_width, sheet_height = *sheet_dimensions(xsheet)
 
-        last_column = last_column(xsheet)
-        rownum = -1
-        sheet.rows =
-          xsheet.xpath("/xmlns:worksheet/xmlns:sheetData/xmlns:row").map do |xrow|
-          rownum += 1
+        sheet.rows = Array.new(sheet_height) { Array.new(sheet_width) }
+        xsheet.xpath("/xmlns:worksheet/xmlns:sheetData/xmlns:row/xmlns:c").each do |xcell|
+          column, row = *xcell.attr('r').match(/([A-Z]+)([0-9]+)/).captures
+          col_idx = column_letter_to_number(column) - 1
+          row_idx = row.to_i - 1
 
-          colname = nil
-          colnum  = -1
-          cells   = []
-          while(colname != last_column) do
-            colname ? colname.next! : colname = 'A'
-            colnum += 1
+          type  = xcell.attributes['t'] &&
+                  xcell.attributes['t'].value
+          style = xcell.attributes['s'] &&
+                  style_types[xcell.attributes['s'].value.to_i]
 
-            xcell = xrow.at_xpath(
-              %(xmlns:c[@r="#{colname + (rownum + 1).to_s}"]))
+          xvalue = type == 'inlineStr' ?
+            xcell.at_xpath('xmlns:is/xmlns:t') : xcell.at_xpath('xmlns:v')
 
-            # try to bridge a gap in row numbers
-            if xcell.nil? && xrow.attr('r') =~ /\b\d+\b/
-              r = xrow.attr('r').to_i
-              xcell = xrow.at_xpath(
-                %(xmlns:c[@r="#{colname + (r).to_s}"]))
-              rownum = r if xcell
-            end
+          cell = begin
+            self.class.cast(xvalue && xvalue.text.strip, type, style,
+                            :shared_strings => shared_strings)
+          rescue => e
+            if !SimpleXlsxReader.configuration.catch_cell_load_errors
+              error = CellLoadError.new(
+                "Row #{row_idx}, Col #{col_idx}: #{e.message}")
+              error.set_backtrace(e.backtrace)
+              raise error
+            else
+              sheet.load_errors[[row_idx, col_idx]] = e.message
 
-            # empty 'General' columns might not be in the xml
-            next cells << nil if xcell.nil?
-
-            type  = xcell.attributes['t'] &&
-                    xcell.attributes['t'].value
-            style = xcell.attributes['s'] &&
-                    style_types[xcell.attributes['s'].value.to_i]
-
-            xvalue = type == 'inlineStr' ?
-              xcell.at_xpath('xmlns:is/xmlns:t') : xcell.at_xpath('xmlns:v')
-
-            cells << begin
-              self.class.cast(xvalue && xvalue.text.strip, type, style,
-                              :shared_strings => shared_strings)
-            rescue => e
-              if !SimpleXlsxReader.configuration.catch_cell_load_errors
-                error = CellLoadError.new(
-                  "Row #{rownum}, Col #{colnum}: #{e.message}")
-                error.set_backtrace(e.backtrace)
-                raise error
-              else
-                sheet.load_errors[[rownum, colnum]] = e.message
-
-                xcell.text.strip
-              end
+              xcell.text.strip
             end
           end
 
-          cells
+          # This shouldn't be necessary, but just in case, we'll create
+          # the row so we don't blow up. This means any null rows in between
+          # will be null instead of [null, null, ...]
+          sheet.rows[row_idx] ||= Array.new(sheet_width)
+
+          sheet.rows[row_idx][col_idx] = cell
         end
 
         sheet
@@ -188,17 +172,43 @@ module SimpleXlsxReader
       # and check the column name of the last header row. Obviously this isn't
       # the most robust strategy, but it likely fits 99% of use cases
       # considering it's not a problem with actual excel docs.
-      def last_column(xsheet)
+      def last_cell_label(xsheet)
         dimension = xsheet.at_xpath('/xmlns:worksheet/xmlns:dimension')
         if dimension
-          col = dimension.attributes['ref'].value.match(/:([A-Z]*)[1-9]*/)
-          col ? col.captures.first : 'A'
+          col = dimension.attributes['ref'].value.match(/:([A-Z]+[0-9]+)/)
+          col ? col.captures.first : 'A1'
         else
-          last = xsheet.at_xpath("/xmlns:worksheet/xmlns:sheetData/xmlns:row/xmlns:c[last()]")
-          last ? last.attributes['r'].value.match(/([A-Z]*)[1-9]*/).captures.first : 'A'
+          last = xsheet.at_xpath("/xmlns:worksheet/xmlns:sheetData/xmlns:row[last()]/xmlns:c[last()]")
+          last ? last.attributes['r'].value.match(/([A-Z]+[0-9]+)/).captures.first : 'A1'
         end
       end
 
+      # Returns dimensions (1-indexed)
+      def sheet_dimensions(xsheet)
+        column, row = *last_cell_label(xsheet).match(/([A-Z]+)([0-9]+)/).captures
+        [column_letter_to_number(column), row.to_i]
+      end
+
+      # formula fits an exponential factorial function of the form:
+      # 'A'   = 1
+      # 'B'   = 2
+      # 'Z'   = 26
+      # 'AA'  = 26 * 1  + 1
+      # 'AZ'  = 26 * 1  + 26
+      # 'BA'  = 26 * 2  + 1
+      # 'ZA'  = 26 * 26 + 1
+      # 'ZZ'  = 26 * 26 + 26
+      # 'AAA' = 26 * 26 * 1 + 26 * 1  + 1
+      # 'AAZ' = 26 * 26 * 1 + 26 * 1  + 26
+      # 'ABA' = 26 * 26 * 1 + 26 * 2  + 1
+      # 'BZA' = 26 * 26 * 2 + 26 * 26 + 1
+      def column_letter_to_number(column_letter)
+        pow = -1
+        column_letter.codepoints.reverse.inject(0) do |acc, charcode|
+          pow += 1
+          acc + 26**pow * (charcode - 64)
+        end
+      end
 
       # Excel doesn't record types for some cells, only its display style, so
       # we have to back out the type from that style.

@@ -85,7 +85,7 @@ describe 'SimpleXlsxReader Benchmark' do
 
       range.times do |n|
         sheet.xpath("/xmlns:worksheet/xmlns:sheetData/xmlns:row").last.
-          add_next_sibling(build_row(n))
+          add_next_sibling(build_row(n+1))
       end
 
       @xml.sheets[range] = sheet
@@ -98,14 +98,16 @@ describe 'SimpleXlsxReader Benchmark' do
 
   bench_performance_linear 'parses sheets in linear time', 0.9999 do |n|
 
-    raise "not enough sample data; asked for #{n}, only have #{@xml.sheets.count}"\
+    raise "not enough sample data; asked for #{n}, only have #{@xml.sheets.size}"\
       if @xml.sheets[n].nil?
 
     sheet = SimpleXlsxReader::Document::Mapper.new(@xml).
       parse_sheet('test', @xml.sheets[n])
 
-    raise "sheet didn't parse correctly; expected #{n + 1} rows, got #{sheet.rows.count}"\
-      if sheet.rows.count != n + 1
+    binding.pry if sheet.rows.size != n + 1
+
+    raise "sheet didn't parse correctly; expected #{n + 1} rows, got #{sheet.rows.size}"\
+      if sheet.rows.size != n + 1
   end
 
 end

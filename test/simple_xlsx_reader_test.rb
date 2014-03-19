@@ -105,7 +105,7 @@ describe SimpleXlsxReader do
       end
     end
 
-    describe '#last_column' do
+    describe '#last_cell_label' do
 
       let(:generic_style) do
           Nokogiri::XML(
@@ -166,21 +166,45 @@ describe SimpleXlsxReader do
       subject { described_class.new(xml) }
 
       it 'uses /worksheet/dimension if available' do
-        subject.last_column(sheet).must_equal 'C'
+        subject.last_cell_label(sheet).must_equal 'C1'
       end
 
       it 'uses the last header cell if /worksheet/dimension is missing' do
         sheet.xpath('/xmlns:worksheet/xmlns:dimension').remove
-        subject.last_column(sheet).must_equal 'D'
+        subject.last_cell_label(sheet).must_equal 'D1'
       end
 
-      it 'returns "A" if the dimension is just one cell' do
-        subject.last_column(empty_sheet).must_equal 'A'
+      it 'returns "A1" if the dimension is just one cell' do
+        subject.last_cell_label(empty_sheet).must_equal 'A1'
       end
 
-      it 'returns "A" if the sheet is just one cell, but /worksheet/dimension is missing' do
+      it 'returns "A1" if the sheet is just one cell, but /worksheet/dimension is missing' do
         sheet.at_xpath('/xmlns:worksheet/xmlns:dimension').remove
-        subject.last_column(empty_sheet).must_equal 'A'
+        subject.last_cell_label(empty_sheet).must_equal 'A1'
+      end
+    end
+
+    describe '#column_letter_to_number' do
+      let(:subject) { described_class.new }
+
+      [ ['A',   1    ],
+        ['B',   2    ],
+        ['Z',   26   ],
+        ['AA',  27   ],
+        ['AB',  28   ],
+        ['AZ',  52   ],
+        ['BA',  53   ],
+        ['BZ',  78   ],
+        ['ZZ',  702  ],
+        ['AAA', 703  ],
+        ['AAZ', 728  ],
+        ['ABA', 729  ],
+        ['ABZ', 754  ],
+        ['AZZ', 1378 ],
+        ['ZZZ', 18278] ].each do |(letter, number)|
+        it "converts #{letter} to #{number}" do
+          subject.column_letter_to_number(letter).must_equal number
+        end
       end
     end
 
@@ -325,25 +349,25 @@ describe SimpleXlsxReader do
           xml.sheets = [Nokogiri::XML(
             <<-XML
               <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-                <dimension ref="A1:G1" />
+                <dimension ref="A1:D7" />
                 <sheetData>
-                <row ht="21" r="1" spans="1:1">
-                  <c r="A1" s="1" t="s">
+                <row r="2" spans="1:1">
+                  <c r="A2" s="0">
                     <v>0</v>
                   </c>
                 </row>
-                <row r="3" spans="1:1">
-                  <c r="A3" s="2" t="s">
+                <row r="4" spans="1:1">
+                  <c r="B4" s="0">
                     <v>1</v>
                   </c>
                 </row>
-                <row r="4" spans="1:1">
-                  <c r="A4" s="2" t="s">
+                <row r="5" spans="1:1">
+                  <c r="C5" s="0">
                     <v>2</v>
                   </c>
                 </row>
-                <row r="6" spans="1:1">
-                  <c r="A6" s="2" t="s">
+                <row r="7" spans="1:1">
+                  <c r="D7" s="0">
                     <v>3</v>
                   </c>
                 </row>
@@ -352,33 +376,11 @@ describe SimpleXlsxReader do
             XML
           )]
 
-          xml.shared_strings =
-            Nokogiri::XML(
-              <<-XML 
-                <sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="134" uniqueCount="134">
-                  <si>
-                    <t>Grimm Artisanal Ales</t>
-                  </si>
-                  <si>
-                    <t>From the Hip- Belgian-Style Blonde Ale brewed with Rose Hips 1/6 bbl</t>
-                  </si>
-                  <si>
-                    <t>Bees in the Trappe- Biere de Miel (Tripple) 8% 1/6 bbl</t>
-                  </si>
-                  <si>
-                    <t>Bees in the Trappe 22 oz</t>
-                  </si>
-                </sst>
-              XML
-            )
-
           xml.styles = Nokogiri::XML(
             <<-XML
               <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
                 <cellXfs count="1">
                   <xf numFmtId="0" />
-                  <xf numFmtId="2" />
-                  <xf numFmtId="14" />
                 </cellXfs>
               </styleSheet>
             XML
@@ -387,13 +389,19 @@ describe SimpleXlsxReader do
       end
 
       before do
-        @rows = described_class.new(xml).parse_sheet('test', xml.sheets.first).rows.map {|r| r[0]}
+        @rows = described_class.new(xml).parse_sheet('test', xml.sheets.first).rows
       end
 
       it "reads row data despite gaps in row numbering" do
-        @rows[0].must_equal "Grimm Artisanal Ales"
-        @rows[1].must_equal "From the Hip- Belgian-Style Blonde Ale brewed with Rose Hips 1/6 bbl"
-        @rows[3].must_equal "Bees in the Trappe 22 oz"
+        @rows.must_equal [
+          [nil,nil,nil,nil],
+          ["0",nil,nil,nil],
+          [nil,nil,nil,nil],
+          [nil,"1",nil,nil],
+          [nil,nil,"2",nil],
+          [nil,nil,nil,nil],
+          [nil,nil,nil,"3"]
+        ]
       end
     end
 
