@@ -104,8 +104,6 @@ describe 'SimpleXlsxReader Benchmark' do
     sheet = SimpleXlsxReader::Document::Mapper.new(@xml).
       parse_sheet('test', @xml.sheets[n])
 
-    binding.pry if sheet.rows.size != n + 1
-
     raise "sheet didn't parse correctly; expected #{n + 1} rows, got #{sheet.rows.size}"\
       if sheet.rows.size != n + 1
   end
