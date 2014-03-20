@@ -97,7 +97,18 @@ This project follows [semantic versioning 1.0](http://semver.org/spec/v1.0.0.htm
 
 ## Contributing
 
-1. Fork it
+Remember to write tests, think about edge cases, and run the existing
+suite.
+
+Note that as of commit 665cbafdde, the most extreme end of the
+linear-time performance test, which is 10,000 rows (12 columns), runs in
+~4 seconds on Ruby 2.1 on a 2012 MBP. If the linear time assertion fails
+or you're way off that, there is probably a performance regression in
+your code.
+
+Then, the standard stuff:
+
+1. Fork this project
 2. Create your feature branch (`git checkout -b my-new-feature`)
 3. Commit your changes (`git commit -am 'Add some feature'`)
 4. Push to the branch (`git push origin my-new-feature`)
