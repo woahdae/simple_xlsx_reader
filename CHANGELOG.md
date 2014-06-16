@@ -1,3 +1,10 @@
+### 1.0.0.pre
+
+* Handle files with blank rows [Brian Hoffman]
+* Preserve seconds when casting datetimes [Rob Newbould]
+* Preserve empty rows (previously would be ommitted)
+* Speed up parsing by ~55%
+
 ### 0.9.8
 
 * Rubyzip 1.0 compatability
