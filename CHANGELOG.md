@@ -1,3 +1,7 @@
+### 1.0.1
+
+* Add support for the 1904 date system [zilverline]
+
 ### 1.0.0
 
 No changes since 1.0.0.pre. Releasing 1.0.0 since the project has seen a
