@@ -1,3 +1,9 @@
+### 1.0.0
+
+No changes since 1.0.0.pre. Releasing 1.0.0 since the project has seen a
+few months of stability in terms of bug fix requests, and the API is not
+going to change.
+
 ### 1.0.0.pre
 
 * Handle files with blank rows [Brian Hoffman]
