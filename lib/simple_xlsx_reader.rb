@@ -100,6 +100,9 @@ module SimpleXlsxReader
     ##
     # For internal use; translates source xml to Sheet objects.
     class Mapper < Struct.new(:xml)
+      DATE_SYSTEM_1900 = Date.new(1899, 12, 30)
+      DATE_SYSTEM_1904 = Date.new(1904, 1, 1)
+
       def load_sheets
         sheet_toc.each_with_index.map do |(sheet_name, _sheet_number), i|
           parse_sheet(sheet_name, xml.sheets[i])  # sheet_number is *not* the index into xml.sheets
@@ -149,7 +152,8 @@ module SimpleXlsxReader
 
           cell = begin
             self.class.cast(xvalue && xvalue.text.strip, type, style,
-                            :shared_strings => shared_strings)
+                            :shared_strings => shared_strings,
+                            :base_date => base_date)
           rescue => e
             if !SimpleXlsxReader.configuration.catch_cell_load_errors
               error = CellLoadError.new(
@@ -343,10 +347,10 @@ module SimpleXlsxReader
         # the trickiest. note that  all these formats can vary on
         # whether they actually contain a date, time, or datetime.
         when :date, :time, :date_time
-          days_since_1900, fraction_of_24 = value.split('.')
+          days_since_date_system_start, fraction_of_24 = value.split('.')
 
           # http://stackoverflow.com/questions/10559767/how-to-convert-ms-excel-date-from-float-to-date-format-in-ruby
-          date = Date.new(1899, 12, 30) + Integer(days_since_1900)
+          date = options.fetch(:base_date, DATE_SYSTEM_1900) + Integer(days_since_date_system_start)
 
           if fraction_of_24 # there is a time associated
             fraction_of_24 = "0.#{fraction_of_24}".to_f
@@ -370,6 +374,21 @@ module SimpleXlsxReader
         else
           value
         end
+      end
+
+      ## Returns the base_date from which to calculate dates.
+      # Defaults to 1900 (minus two days due to excel quirk), but use 1904 if
+      # it's set in the Workbook's workbookPr.
+      # http://msdn.microsoft.com/en-us/library/ff530155(v=office.12).aspx
+      def base_date
+        @base_date ||=
+          begin
+            return DATE_SYSTEM_1900 if xml.workbook == nil
+            xml.workbook.xpath("//workbook/workbookPr[@date1904]").each do |workbookPr|
+              return DATE_SYSTEM_1904 if workbookPr["date1904"] =~ /true|1/i
+            end
+            DATE_SYSTEM_1900
+          end
       end
 
       # Map of non-custom numFmtId to casting symbol
