@@ -219,7 +219,7 @@ module SimpleXlsxReader
       # 'BZA' = 26 * 26 * 2 + 26 * 26 + 1
       def column_letter_to_number(column_letter)
         pow = -1
-        column_letter.codepoints.reverse.inject(0) do |acc, charcode|
+        column_letter.codepoints.to_a.reverse.inject(0) do |acc, charcode|
           pow += 1
           acc + 26**pow * (charcode - 64)
         end
