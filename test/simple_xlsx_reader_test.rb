@@ -258,6 +258,48 @@ describe SimpleXlsxReader do
       end
     end
 
+    describe "missing numFmtId attributes" do
+      after do
+        SimpleXlsxReader.configuration.catch_cell_load_errors = false
+      end
+
+      let(:xml) do
+        SimpleXlsxReader::Document::Xml.new.tap do |xml|
+          xml.sheets = [Nokogiri::XML(
+                            <<-XML
+            <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+              <dimension ref="A1:A1" />
+              <sheetData>
+                <row>
+                  <c r='A1' s='s'>
+                    <v>some content</v>
+                  </c>
+                </row>
+              </sheetData>
+            </worksheet>
+                        XML
+                        ).remove_namespaces!]
+
+          xml.styles = Nokogiri::XML(
+              <<-XML
+            <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+
+            </styleSheet>
+          XML
+          ).remove_namespaces!
+        end
+      end
+      before do
+        @row = described_class.new(xml).parse_sheet('test', xml.sheets.first).rows[0]
+      end
+
+      it 'continues even when cells are missing numFmtId attributes ' do
+        @row[0].must_equal 'some content'
+      end
+
+
+    end
+
     describe 'parsing types' do
       let(:xml) do
         SimpleXlsxReader::Document::Xml.new.tap do |xml|

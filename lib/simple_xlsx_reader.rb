@@ -241,8 +241,17 @@ module SimpleXlsxReader
       # type.
       def style_types
         @style_types ||=
-          xml.styles.xpath('/styleSheet/cellXfs/xf').map {|xstyle|
-            style_type_by_num_fmt_id(xstyle.attributes['numFmtId'].value)}
+            xml.styles.xpath('/styleSheet/cellXfs/xf').map {|xstyle|
+              style_type_by_num_fmt_id(num_fmt_id(xstyle))}
+      end
+
+      #returns the numFmtId value if it's available
+      def num_fmt_id(xstyle)
+        if xstyle.attributes['numFmtId']
+          xstyle.attributes['numFmtId'].value
+        else
+          nil
+        end
       end
 
       # Finds the type we think a style is; For example, fmtId 14 is a date
