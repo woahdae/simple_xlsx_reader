@@ -259,9 +259,6 @@ describe SimpleXlsxReader do
     end
 
     describe "missing numFmtId attributes" do
-      after do
-        SimpleXlsxReader.configuration.catch_cell_load_errors = false
-      end
 
       let(:xml) do
         SimpleXlsxReader::Document::Xml.new.tap do |xml|
@@ -289,6 +286,7 @@ describe SimpleXlsxReader do
           ).remove_namespaces!
         end
       end
+
       before do
         @row = described_class.new(xml).parse_sheet('test', xml.sheets.first).rows[0]
       end
@@ -296,7 +294,6 @@ describe SimpleXlsxReader do
       it 'continues even when cells are missing numFmtId attributes ' do
         @row[0].must_equal 'some content'
       end
-
 
     end
 
