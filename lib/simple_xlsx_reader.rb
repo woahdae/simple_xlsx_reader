@@ -79,8 +79,9 @@ module SimpleXlsxReader
 
             # optional feature used by excel, but not often used by xlsx
             # generation libraries
-            if zip.file.file?('xl/sharedStrings.xml')
-              xml.shared_strings = Nokogiri::XML(zip.read('xl/sharedStrings.xml')).remove_namespaces!
+            ss_file =  (zip.to_a.map(&:name) & ['xl/sharedStrings.xml','xl/sharedstrings.xml'])[0]
+            if ss_file
+              xml.shared_strings = Nokogiri::XML(zip.read(ss_file)).remove_namespaces!
             end
 
             xml.sheets = []
