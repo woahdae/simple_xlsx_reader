@@ -79,8 +79,9 @@ module SimpleXlsxReader
 
             # optional feature used by excel, but not often used by xlsx
             # generation libraries
-            if zip.file.file?('xl/sharedStrings.xml')
-              xml.shared_strings = Nokogiri::XML(zip.read('xl/sharedStrings.xml')).remove_namespaces!
+            ss_file =  (zip.to_a.map(&:name) & ['xl/sharedStrings.xml','xl/sharedstrings.xml'])[0]
+            if ss_file
+              xml.shared_strings = Nokogiri::XML(zip.read(ss_file)).remove_namespaces!
             end
 
             xml.sheets = []
@@ -241,8 +242,17 @@ module SimpleXlsxReader
       # type.
       def style_types
         @style_types ||=
-          xml.styles.xpath('/styleSheet/cellXfs/xf').map {|xstyle|
-            style_type_by_num_fmt_id(xstyle.attributes['numFmtId'].value)}
+            xml.styles.xpath('/styleSheet/cellXfs/xf').map {|xstyle|
+              style_type_by_num_fmt_id(num_fmt_id(xstyle))}
+      end
+
+      #returns the numFmtId value if it's available
+      def num_fmt_id(xstyle)
+        if xstyle.attributes['numFmtId']
+          xstyle.attributes['numFmtId'].value
+        else
+          nil
+        end
       end
 
       # Finds the type we think a style is; For example, fmtId 14 is a date
