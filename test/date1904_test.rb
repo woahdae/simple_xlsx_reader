@@ -1,4 +1,4 @@
-require 'test_helper'
+require_relative 'test_helper'
 
 describe SimpleXlsxReader do
   let(:date1904_file) { File.join(File.dirname(__FILE__), 'date1904.xlsx') }
