@@ -102,6 +102,13 @@ describe SimpleXlsxReader do
 
       it 'reads custom formatted styles (numFmtId >= 164)' do
         mapper.style_types[1].must_equal :date_time
+        mapper.custom_style_types[164].must_equal :date_time
+      end
+
+      # something I've seen in the wild; don't think it's correct, but let's be flexible.
+      it 'reads custom formatted styles given an id < 164, but not explicitly defined in the SpreadsheetML spec' do
+        mapper.style_types[2].must_equal :date_time
+        mapper.custom_style_types[59].must_equal :date_time
       end
     end
 

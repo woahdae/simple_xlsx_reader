@@ -256,16 +256,18 @@ module SimpleXlsxReader
       end
 
       # Finds the type we think a style is; For example, fmtId 14 is a date
-      # style, so this would return :date
+      # style, so this would return :date.
+      #
+      # Note, custom styles usually (are supposed to?) have a numFmtId >= 164,
+      # but in practice can sometimes be simply out of the usual "Any Language"
+      # id range that goes up to 49. For example, I have seen a numFmtId of
+      # 59 specified as a date. In Thai, 59 is a number format, so this seems
+      # like a bad idea, but we try to be flexible and just go with it.
       def style_type_by_num_fmt_id(id)
         return nil if id.nil?
 
         id = id.to_i
-        if id >= 164 # custom style, arg!
-          custom_style_types[id]
-        else # we should know this one
-          NumFmtMap[id]
-        end
+        NumFmtMap[id] || custom_style_types[id]
       end
 
       # Map of (numFmtId >= 164) (custom styles) to our best guess at the type
