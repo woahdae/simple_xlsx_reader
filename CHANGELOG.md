@@ -5,6 +5,7 @@
   * You don't always have a numFmtId column, and that's OK
   * Sometimes 'sharedStrings.xml' can be 'sharedstrings.xml'
 * Fixed parsing times very close to 12/30/1899 [Valeriy Utyaganov]
+* Be more flexible with custom formats using a numFmtId < 164
 
 ### 1.0.1
 
