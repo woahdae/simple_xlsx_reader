@@ -1,3 +1,11 @@
+### 1.0.2
+
+* Fix Ruby 1.9.3-specific bug preventing parsing most sheets [middagj, eritiro]
+* Better support for non-excel-generated xlsx files [bwlang]
+  * You don't always have a numFmtId column, and that's OK
+  * Sometimes 'sharedStrings.xml' can be 'sharedstrings.xml'
+* Fixed parsing times very close to 12/30/1899 [Valeriy Utyaganov]
+
 ### 1.0.1
 
 * Add support for the 1904 date system [zilverline]
