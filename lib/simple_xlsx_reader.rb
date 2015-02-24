@@ -219,11 +219,13 @@ module SimpleXlsxReader
       # 'ABA' = 26 * 26 * 1 + 26 * 2  + 1
       # 'BZA' = 26 * 26 * 2 + 26 * 26 + 1
       def column_letter_to_number(column_letter)
-        pow = -1
-        column_letter.codepoints.to_a.reverse.inject(0) do |acc, charcode|
-          pow += 1
-          acc + 26**pow * (charcode - 64)
+        pow = column_letter.length - 1
+        result = 0
+        column_letter.each_byte do |b|
+          result += 26**pow * (b - 64)
+          pow -= 1
         end
+        result
       end
 
       # Excel doesn't record types for some cells, only its display style, so
