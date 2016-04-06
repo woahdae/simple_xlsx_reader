@@ -86,12 +86,12 @@ module SimpleXlsxReader
 
             xml.sheets = []
 
-            # Is here an "initial" first stylesheet?
-            # Google Docs exports sheets in this order:
+            # Sometimes there's a zero-index sheet.xml, ex.
+            # Google Docs creates:
             # xl/worksheets/sheet.xml
             # xl/worksheets/sheet1.xml
             # xl/worksheets/sheet2.xml
-            # excel exports them in
+            # While Excel creates:
             # xl/worksheets/sheet1.xml
             # xl/worksheets/sheet2.xml
             if zip.file.file?('xl/worksheets/sheet.xml')
