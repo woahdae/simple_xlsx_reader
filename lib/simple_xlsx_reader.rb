@@ -85,13 +85,28 @@ module SimpleXlsxReader
             end
 
             xml.sheets = []
+
+            # Is here an "initial" first stylesheet?
+            # Google Docs exports sheets in this order:
+            # xl/worksheets/sheet.xml
+            # xl/worksheets/sheet1.xml
+            # xl/worksheets/sheet2.xml
+            # excel exports them in
+            # xl/worksheets/sheet1.xml
+            # xl/worksheets/sheet2.xml
+            if zip.file.file?('xl/worksheets/sheet.xml')
+              xml.sheets << Nokogiri::XML(zip.read('xl/worksheets/sheet.xml')).remove_namespaces!
+            end
+
             i = 0
             loop do
               i += 1
-              break if !zip.file.file?("xl/worksheets/sheet#{i}.xml")
 
-              xml.sheets <<
-                Nokogiri::XML(zip.read("xl/worksheets/sheet#{i}.xml")).remove_namespaces!
+              sheet_file_name = "xl/worksheets/sheet#{i}.xml"
+
+              break unless zip.file.file?(sheet_file_name)
+
+              xml.sheets << Nokogiri::XML(zip.read(sheet_file_name)).remove_namespaces!
             end
           end
         end
