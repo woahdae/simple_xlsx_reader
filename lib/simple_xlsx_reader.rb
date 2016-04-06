@@ -376,7 +376,7 @@ module SimpleXlsxReader
         # the trickiest. note that  all these formats can vary on
         # whether they actually contain a date, time, or datetime.
         when :date, :time, :date_time
-          value = value.to_f
+          value = Float(value)
           days_since_date_system_start = value.to_i
           fraction_of_24 = value - days_since_date_system_start
 

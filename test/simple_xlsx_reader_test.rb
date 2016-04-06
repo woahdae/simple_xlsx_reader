@@ -63,9 +63,19 @@ describe SimpleXlsxReader do
           must_equal Time.parse('2013-08-19 18:30 UTC')
       end
 
+      it 'reads less-than-zero complex number types styled as times' do
+        described_class.cast('6.25E-2', 'n', :time).
+          must_equal Time.parse('1899-12-30 01:30:00 UTC')
+      end
+
       it 'reads number types styled as date_times' do
         described_class.cast('41505.77083', 'n', :date_time).
           must_equal Time.parse('2013-08-19 18:30 UTC')
+      end
+
+      it 'raises when date-styled values are not numerical' do
+        lambda { described_class.cast('14 is not a valid date', nil, :date) }.
+          must_raise(ArgumentError)
       end
     end
 
@@ -261,7 +271,7 @@ describe SimpleXlsxReader do
         SimpleXlsxReader.configuration.catch_cell_load_errors = true
 
         sheet = described_class.new(xml).parse_sheet('test', xml.sheets.first)
-        sheet.load_errors[[0,0]].must_include 'invalid value for Integer'
+        sheet.load_errors[[0,0]].must_include 'invalid value for Float'
       end
     end
 
