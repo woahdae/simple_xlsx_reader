@@ -16,10 +16,11 @@ Gem::Specification.new do |gem|
   gem.add_dependency 'rubyzip'
 
   gem.add_development_dependency 'minitest', '>= 5.0'
+  gem.add_development_dependency 'rake'
   gem.add_development_dependency 'pry'
 
   gem.files         = `git ls-files`.split($/)
   gem.executables   = gem.files.grep(%r{^bin/}).map{ |f| File.basename(f) }
-  gem.test_files    = gem.files.grep(%r{^(test|spec|features)/})
+  gem.test_files    = gem.files.grep(%r{^test/})
   gem.require_paths = ["lib"]
 end
