@@ -19,6 +19,33 @@ end
 module SimpleXlsxReader
   class CellLoadError < StandardError; end
 
+  # We support hyperlinks as a "type" even though they're technically
+  # represented either as a function or an external reference in the xlsx spec.
+  #
+  # Since having hyperlink data in our sheet usually means we might want to do
+  # something primarily with the URL (store it in the database, download it, etc),
+  # we go through extra effort to parse the function or follow the reference
+  # to represent the hyperlink primarily as a URL. However, maybe we do want
+  # the hyperlink "friendly name" part (as MS calls it), so here we've subclassed
+  # string to tack on the friendly name. This means 80% of us that just want
+  # the URL value will have to do nothing extra, but the 20% that might want the
+  # friendly name can access it.
+  #
+  # Note, by default, the value we would get by just asking the cell would
+  # be the "friendly name" and *not* the URL, which is tucked away in the
+  # function definition or a separate "relationships" meta-document.
+  #
+  # See MS documentation on the HYPERLINK function for some background:
+  # https://support.office.com/en-us/article/HYPERLINK-function-333c7ce6-c5ae-4164-9c47-7de9b76f577f
+  class Hyperlink < String
+    attr_reader :friendly_name
+
+    def initialize(url, friendly_name = nil)
+      @friendly_name = friendly_name
+      super(url)
+    end
+  end
+
   def self.configuration
     @configuration ||= Struct.new(:catch_cell_load_errors).new.tap do |c|
       c.catch_cell_load_errors = false
@@ -69,7 +96,7 @@ module SimpleXlsxReader
     ##
     # For internal use; stores source xml in nokogiri documents
     class Xml
-      attr_accessor :workbook, :shared_strings, :sheets, :styles
+      attr_accessor :workbook, :shared_strings, :sheets, :sheet_rels, :styles
 
       def self.load(file_path)
         self.new.tap do |xml|
@@ -85,6 +112,7 @@ module SimpleXlsxReader
             end
 
             xml.sheets = []
+            xml.sheet_rels = []
 
             # Sometimes there's a zero-index sheet.xml, ex.
             # Google Docs creates:
@@ -107,6 +135,11 @@ module SimpleXlsxReader
               break unless zip.file.file?(sheet_file_name)
 
               xml.sheets << Nokogiri::XML(zip.read(sheet_file_name)).remove_namespaces!
+
+              relationship_file_name = "xl/worksheets/_rels/sheet#{i}.xml.rels"
+              if zip.file.file?(relationship_file_name)
+                xml.sheet_rels[i-1] = Nokogiri::XML(zip.read(relationship_file_name)).remove_namespaces!
+              end
             end
           end
         end
@@ -121,7 +154,7 @@ module SimpleXlsxReader
 
       def load_sheets
         sheet_toc.each_with_index.map do |(sheet_name, _sheet_number), i|
-          parse_sheet(sheet_name, xml.sheets[i])  # sheet_number is *not* the index into xml.sheets
+          parse_sheet(sheet_name, xml.sheets[i], xml.sheet_rels[i])  # sheet_number is *not* the index into xml.sheets
         end
       end
 
@@ -137,9 +170,10 @@ module SimpleXlsxReader
         end
       end
 
-      def parse_sheet(sheet_name, xsheet)
+      def parse_sheet(sheet_name, xsheet, xrels)
         sheet = Sheet.new(sheet_name)
         sheet_width, sheet_height = *sheet_dimensions(xsheet)
+        cells_w_links = xsheet.xpath('//hyperlinks/hyperlink').inject({}) {|acc, e| acc[e.attr(:ref)] = e.attr(:id); acc}
 
         sheet.rows = Array.new(sheet_height) { Array.new(sheet_width) }
         xsheet.xpath("/worksheet/sheetData/row/c").each do |xcell|
@@ -164,10 +198,21 @@ module SimpleXlsxReader
           # by about 60%. Odd.
           xvalue = type == 'inlineStr' ?
             (xis = xcell.children.find {|c| c.name == 'is'}) && xis.children.find {|c| c.name == 't'} :
-            xcell.children.find {|c| c.name == 'v'}
+            xcell.children.find {|c| c.name == 'f' && c.text.start_with?('HYPERLINK(') || c.name == 'v'}
+
+          if xvalue
+            value = xvalue.text.strip
+
+            if rel_id = cells_w_links[xcell.attr('r')] # a hyperlink made via GUI
+              url = xrels.at_xpath(%(//*[@Id="#{rel_id}"])).attr('Target')
+            elsif xvalue.name == 'f' # only time we have a function is if it's a hyperlink
+              url = value.slice(/HYPERLINK\("(.*?)"/, 1)
+            end
+          end
 
           cell = begin
-            self.class.cast(xvalue && xvalue.text.strip, type, style,
+            self.class.cast(value, type, style,
+                            :url => url,
                             :shared_strings => shared_strings,
                             :base_date => base_date)
           rescue => e
@@ -343,7 +388,7 @@ module SimpleXlsxReader
           type = style
         end
 
-        case type
+        casted = case type
 
         ##
         # There are few built-in types
@@ -402,6 +447,12 @@ module SimpleXlsxReader
 
         else
           value
+        end
+
+        if options[:url]
+          Hyperlink.new(options[:url], casted)
+        else
+          casted
         end
       end
 

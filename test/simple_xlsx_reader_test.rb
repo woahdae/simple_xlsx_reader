@@ -1,6 +1,8 @@
 require_relative 'test_helper'
 require 'time'
 
+SXR = SimpleXlsxReader
+
 describe SimpleXlsxReader do
   let(:sesame_street_blog_file) { File.join(File.dirname(__FILE__),
                                             'sesame_street_blog.xlsx') }
@@ -15,11 +17,11 @@ describe SimpleXlsxReader do
            ["Big Bird", "Teacher"]],
 
         "Posts"=>
-          [["Author Name", "Title", "Body", "Created At", "Comment Count"],
-           ["Big Bird", "The Number 1", "The Greatest", Time.parse("2002-01-01 11:00:00 UTC"), 1],
-           ["Big Bird", "The Number 2", "Second Best", Time.parse("2002-01-02 14:00:00 UTC"), 2],
-           ["Big Bird", "Formula Dates", "Tricky tricky", Time.parse("2002-01-03 14:00:00 UTC"), 0],
-           ["Empty Eagress", nil, "The title, date, and comment have types, but no values", nil, nil]]
+          [["Author Name", "Title", "Body", "Created At", "Comment Count", "URL"],
+           ["Big Bird", "The Number 1", "The Greatest", Time.parse("2002-01-01 11:00:00 UTC"), 1, SXR::Hyperlink.new("http://www.example.com/hyperlink-function", "This uses the HYPERLINK() function")],
+           ["Big Bird", "The Number 2", "Second Best", Time.parse("2002-01-02 14:00:00 UTC"), 2, SXR::Hyperlink.new("http://www.example.com/hyperlink-gui", "This uses the hyperlink GUI option")],
+           ["Big Bird", "Formula Dates", "Tricky tricky", Time.parse("2002-01-03 14:00:00 UTC"), 0, nil],
+           ["Empty Eagress", nil, "The title, date, and comment have types, but no values", nil, nil, nil]]
       })
     end
   end
@@ -76,6 +78,19 @@ describe SimpleXlsxReader do
       it 'raises when date-styled values are not numerical' do
         lambda { described_class.cast('14 is not a valid date', nil, :date) }.
           must_raise(ArgumentError)
+      end
+
+      describe "with the url option" do
+        let(:url) { "http://www.example.com/hyperlink" }
+        it 'creates a hyperlink with a string type' do
+          described_class.cast("A link", 'str', :string, url: url).
+            must_equal SXR::Hyperlink.new(url, "A link")
+        end
+
+        it 'creates a hyperlink with a shared string type' do
+          described_class.cast("2", 's', nil, shared_strings: ['a','b','c'], url: url).
+            must_equal SXR::Hyperlink.new(url, 'c')
+        end
       end
     end
 
@@ -263,14 +278,14 @@ describe SimpleXlsxReader do
       it 'raises if configuration.catch_cell_load_errors' do
         SimpleXlsxReader.configuration.catch_cell_load_errors = false
 
-        lambda { described_class.new(xml).parse_sheet('test', xml.sheets.first) }.
+        lambda { described_class.new(xml).parse_sheet('test', xml.sheets.first, nil) }.
           must_raise(SimpleXlsxReader::CellLoadError)
       end
 
       it 'records a load error if not configuration.catch_cell_load_errors' do
         SimpleXlsxReader.configuration.catch_cell_load_errors = true
 
-        sheet = described_class.new(xml).parse_sheet('test', xml.sheets.first)
+        sheet = described_class.new(xml).parse_sheet('test', xml.sheets.first, nil)
         sheet.load_errors[[0,0]].must_include 'invalid value for Float'
       end
     end
@@ -305,7 +320,7 @@ describe SimpleXlsxReader do
       end
 
       before do
-        @row = described_class.new(xml).parse_sheet('test', xml.sheets.first).rows[0]
+        @row = described_class.new(xml).parse_sheet('test', xml.sheets.first, nil).rows[0]
       end
 
       it 'continues even when cells are missing numFmtId attributes ' do
@@ -340,8 +355,21 @@ describe SimpleXlsxReader do
                     <c r='G1' t='inlineStr' s='0'>
                       <is><t>Cell G1</t></is>
                     </c>
+
+                    <c r='H1' s='0'>
+                      <f>HYPERLINK("http://www.example.com/hyperlink-function", "HYPERLINK function")</f>
+                      <v>HYPERLINK function</v>
+                    </c>
+
+                    <c r='I1' s='0'>
+                      <v>GUI-made hyperlink</v>
+                    </c>
                   </row>
                 </sheetData>
+
+                <hyperlinks>
+                  <hyperlink ref="I1" id="rId1"/>
+                </hyperlinks>
               </worksheet>
             XML
           ).remove_namespaces!]
@@ -359,11 +387,28 @@ describe SimpleXlsxReader do
               </styleSheet>
             XML
           ).remove_namespaces!
+
+          # Although not a "type" or "style" according to xlsx spec,
+          # it sure could/should be, so let's test it with the rest of our
+          # typecasting code.
+          xml.sheet_rels = [Nokogiri::XML(
+            <<-XML
+              <Relationships>
+                <Relationship
+                  Id="rId1"
+                  Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink"
+                  Target="http://www.example.com/hyperlink-gui"
+                  TargetMode="External"
+                />
+              </Relationships>
+            XML
+          ).remove_namespaces!]
+
         end
       end
 
       before do
-        @row = described_class.new(xml).parse_sheet('test', xml.sheets.first).rows[0]
+        @row = described_class.new(xml).parse_sheet('test', xml.sheets.first, xml.sheet_rels.first).rows[0]
       end
 
       it "reads 'Generic' cells as strings" do
@@ -396,6 +441,18 @@ describe SimpleXlsxReader do
 
       it "reads strings formatted as inlineStr" do
         @row[6].must_equal 'Cell G1'
+      end
+
+      it "reads hyperlinks created via HYPERLINK()" do
+        @row[7].must_equal(
+          SXR::Hyperlink.new(
+            "http://www.example.com/hyperlink-function", "HYPERLINK function"))
+      end
+
+      it "reads hyperlinks created via the GUI" do
+        @row[8].must_equal(
+          SXR::Hyperlink.new(
+            "http://www.example.com/hyperlink-gui", "GUI-made hyperlink"))
       end
     end
 
@@ -445,7 +502,7 @@ describe SimpleXlsxReader do
       end
 
       before do
-        @rows = described_class.new(xml).parse_sheet('test', xml.sheets.first).rows
+        @rows = described_class.new(xml).parse_sheet('test', xml.sheets.first, nil).rows
       end
 
       it "reads row data despite gaps in row numbering" do
