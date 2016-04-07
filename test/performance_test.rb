@@ -96,7 +96,7 @@ describe 'SimpleXlsxReader Benchmark' do
     bench_exp(1,10000)
   end
 
-  bench_performance_linear 'parses sheets in linear time', 0.9999 do |n|
+  bench_performance_linear 'parses sheets in linear time', 0.999 do |n|
 
     raise "not enough sample data; asked for #{n}, only have #{@xml.sheets.size}"\
       if @xml.sheets[n].nil?
