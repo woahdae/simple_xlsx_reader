@@ -7,7 +7,7 @@ Gem::Specification.new do |gem|
   gem.name          = "simple_xlsx_reader"
   gem.version       = SimpleXlsxReader::VERSION
   gem.authors       = ["Woody Peterson"]
-  gem.email         = ["woody@sigby.com"]
+  gem.email         = ["woody.peterson@gmail.com"]
   gem.description   = %q{Read xlsx data the Ruby way}
   gem.summary       = %q{Read xlsx data the Ruby way}
   gem.homepage      = ""
