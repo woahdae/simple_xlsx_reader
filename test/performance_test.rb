@@ -46,7 +46,33 @@ describe 'SimpleXlsxReader Benchmark' do
         <c r='L#{n}' t='inlineStr' s='0'>
           <is><t>Cell L#{n}</t></is>
         </c>
+
+        <c r='M#{n}' s='0'>
+          <f>HYPERLINK("http://www.example.com/hyperlink-function", "HYPERLINK function")</f>
+          <v>HYPERLINK function</v>
+        </c>
+
+        <c r='N#{n}' s='0'>
+          <v>GUI-made hyperlink</v>
+        </c>
       </row>
+    XML
+  end
+
+  def build_hyperlink(n)
+    n += 1
+    %(<hyperlink ref="N#{n}" id="rId#{n}"/>)
+  end
+
+  def build_relationship(n)
+    n += 1
+    <<-XML
+      <Relationship
+        Id="rId#{n}"
+        Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink"
+        Target="http://www.example.com/hyperlink-gui"
+        TargetMode="External"
+      />
     XML
   end
 
@@ -56,10 +82,21 @@ describe 'SimpleXlsxReader Benchmark' do
         <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
           <sheetData>
           </sheetData>
+          <hyperlinks>
+          </hyperlinks>
         </worksheet>
       XML
     ).remove_namespaces!
     base.at_xpath("/worksheet/sheetData").add_child(build_row(0))
+
+    base_rel = Nokogiri::XML(
+      <<-XML
+        <Relationships>
+        </Relationships>
+      XML
+    )
+    base.at_xpath("/worksheet/hyperlinks").add_child(build_hyperlink(0))
+    base_rel.at_xpath("/Relationships").add_child(build_relationship(0))
 
     @xml = SimpleXlsxReader::Document::Xml.new.tap do |xml|
       xml.sheets = [base]
@@ -77,18 +114,37 @@ describe 'SimpleXlsxReader Benchmark' do
           </styleSheet>
         XML
       ).remove_namespaces!
+
+      xml.sheet_rels = [Nokogiri::XML(
+        <<-XML
+          <Relationships>
+            <Relationship
+              Id="rId1"
+              Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink"
+              Target="http://www.example.com/hyperlink-gui"
+              TargetMode="External"
+            />
+          </Relationships>
+        XML
+      ).remove_namespaces!]
     end
 
     # Every new sheet has one more row
     self.class.bench_range.each do |range|
       sheet = base.clone
+      sheet_rels = base_rel.clone
 
       range.times do |n|
         sheet.xpath("/worksheet/sheetData/row").last.
           add_next_sibling(build_row(n+1))
+        sheet.xpath("/worksheet/hyperlinks/hyperlink").last.
+          add_next_sibling(build_hyperlink(n+1))
+        sheet_rels.xpath("/Relationships/Relationship").last.
+          add_next_sibling(build_relationship(n+1))
       end
 
       @xml.sheets[range] = sheet
+      @xml.sheet_rels[range] = sheet_rels
     end
   end
 
@@ -102,7 +158,7 @@ describe 'SimpleXlsxReader Benchmark' do
       if @xml.sheets[n].nil?
 
     sheet = SimpleXlsxReader::Document::Mapper.new(@xml).
-      parse_sheet('test', @xml.sheets[n], nil)
+      parse_sheet('test', @xml.sheets[n], @xml.sheet_rels[n])
 
     raise "sheet didn't parse correctly; expected #{n + 1} rows, got #{sheet.rows.size}"\
       if sheet.rows.size != n + 1
