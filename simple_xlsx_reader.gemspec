@@ -11,6 +11,7 @@ Gem::Specification.new do |gem|
   gem.description   = %q{Read xlsx data the Ruby way}
   gem.summary       = %q{Read xlsx data the Ruby way}
   gem.homepage      = ""
+  gem.license       = "MIT"
 
   gem.add_dependency 'nokogiri'
   gem.add_dependency 'rubyzip'
