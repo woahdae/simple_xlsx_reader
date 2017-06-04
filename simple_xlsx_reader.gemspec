@@ -14,7 +14,7 @@ Gem::Specification.new do |gem|
   gem.license       = "MIT"
 
   gem.add_dependency 'nokogiri'
-  gem.add_dependency 'rubyzip'
+  gem.add_dependency 'zip'
 
   gem.add_development_dependency 'minitest', '>= 5.0'
   gem.add_development_dependency 'rake'
