@@ -101,45 +101,47 @@ module SimpleXlsxReader
       def self.load(file_path)
         self.new.tap do |xml|
           SimpleXlsxReader::Zip.open(file_path) do |zip|
-            xml.workbook = Nokogiri::XML(zip.read('xl/workbook.xml')).remove_namespaces!
-            xml.styles   = Nokogiri::XML(zip.read('xl/styles.xml')).remove_namespaces!
-
-            # optional feature used by excel, but not often used by xlsx
-            # generation libraries
-            ss_file =  (zip.to_a.map(&:name) & ['xl/sharedStrings.xml','xl/sharedstrings.xml'])[0]
-            if ss_file
-              xml.shared_strings = Nokogiri::XML(zip.read(ss_file)).remove_namespaces!
-            end
-
             xml.sheets = []
             xml.sheet_rels = []
 
+            # This weird style of enumerating over the entries lets us
+            # concisely assign entries in a case insensitive and
+            # slash insensitive ('/' vs '\') manner.
+            #
+            # RubyZip used to normalize the slashes, but doesn't now:
+            # https://github.com/rubyzip/rubyzip/issues/324
+            zip.entries.each do |entry|
+              if entry.name.match(/^xl.workbook\.xml$/) # xl/workbook.xml
+                xml.workbook = Nokogiri::XML(zip.read(entry)).remove_namespaces!
+              elsif entry.name.match(/^xl.styles\.xml$/) # xl/styles.xml
+                xml.styles   = Nokogiri::XML(zip.read(entry)).remove_namespaces!
+              elsif entry.name.match(/^xl.sharedStrings\.xml$/i) # xl/sharedStrings.xml
+                # optional feature used by excel, but not often used by xlsx
+                # generation libraries. Path name is sometimes lowercase, too.
+                xml.shared_strings = Nokogiri::XML(zip.read(entry)).remove_namespaces!
+              elsif sheet_number = entry.name.match(/^xl.worksheets.sheet([0-9]*)\.xml$/)&.captures&.first
+                xml.sheets[sheet_number.to_i] =
+                  Nokogiri::XML(zip.read(entry)).remove_namespaces!
+              elsif sheet_number = entry.name.match(/^xl.worksheets._rels.sheet([0-9]*)\.xml\.rels$/)&.captures&.first
+                xml.sheet_rels[sheet_number.to_i] =
+                  Nokogiri::XML(zip.read(entry)).remove_namespaces!
+              end
+            end
+
             # Sometimes there's a zero-index sheet.xml, ex.
             # Google Docs creates:
+            #
             # xl/worksheets/sheet.xml
             # xl/worksheets/sheet1.xml
             # xl/worksheets/sheet2.xml
             # While Excel creates:
             # xl/worksheets/sheet1.xml
             # xl/worksheets/sheet2.xml
-            if zip.file.file?('xl/worksheets/sheet.xml')
-              xml.sheets << Nokogiri::XML(zip.read('xl/worksheets/sheet.xml')).remove_namespaces!
-            end
-
-            i = 0
-            loop do
-              i += 1
-
-              sheet_file_name = "xl/worksheets/sheet#{i}.xml"
-
-              break unless zip.file.file?(sheet_file_name)
-
-              xml.sheets << Nokogiri::XML(zip.read(sheet_file_name)).remove_namespaces!
-
-              relationship_file_name = "xl/worksheets/_rels/sheet#{i}.xml.rels"
-              if zip.file.file?(relationship_file_name)
-                xml.sheet_rels[i-1] = Nokogiri::XML(zip.read(relationship_file_name)).remove_namespaces!
-              end
+            #
+            # So, for the latter case, let's shift [null, <Sheet 1>, <Sheet 2>]
+            if !xml.sheets[0]
+              xml.sheets.shift
+              xml.sheet_rels.shift
             end
           end
         end
