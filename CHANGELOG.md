@@ -1,3 +1,13 @@
+### 1.0.4
+
+* Fix Windows + RubyZip 1.2.1 bug preventing files from being read
+* Add ability to parse hyperlinks
+* Support files exported from Google Docs (@Strnadj)
+
+### 1.0.3
+
+Broken on Ruby 1.9; yanked.
+
 ### 1.0.2
 
 * Fix Ruby 1.9.3-specific bug preventing parsing most sheets [middagj, eritiro]
