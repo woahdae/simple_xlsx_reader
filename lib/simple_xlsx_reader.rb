@@ -53,14 +53,20 @@ module SimpleXlsxReader
   end
 
   def self.open(file_path)
-    Document.new(file_path).tap(&:sheets)
+    Document.new(file_path: file_path).tap(&:sheets)
+  end
+  
+  def self.open_buffer(buffer)
+    Document.new(buffer: buffer).tap(&:sheets)
   end
 
   class Document
     attr_reader :file_path
+    attr_reader :buffer
 
-    def initialize(file_path)
+    def initialize(file_path: nil, buffer: nil)
       @file_path = file_path
+      @buffer = buffer
     end
 
     def sheets
@@ -72,7 +78,7 @@ module SimpleXlsxReader
     end
 
     def xml
-      Xml.load(file_path)
+      Xml.load(file_path: file_path, buffer: buffer)
     end
 
     class Sheet < Struct.new(:name, :rows)
@@ -98,9 +104,9 @@ module SimpleXlsxReader
     class Xml
       attr_accessor :workbook, :shared_strings, :sheets, :sheet_rels, :styles
 
-      def self.load(file_path)
+      def self.load(file_path: nil, buffer: nil)
         self.new.tap do |xml|
-          SimpleXlsxReader::Zip.open(file_path) do |zip|
+          zip_proc = proc do |zip|
             xml.sheets = []
             xml.sheet_rels = []
 
@@ -145,6 +151,13 @@ module SimpleXlsxReader
               xml.sheets.shift
               xml.sheet_rels.shift
             end
+          end
+          if file_path
+            SimpleXlsxReader::Zip.open(file_path, &zip_proc)
+          elsif buffer
+            SimpleXlsxReader::Zip.open_buffer(buffer, &zip_proc)
+          else
+            fail 'Either file_path or buffer must be provided.'
           end
         end
       end
