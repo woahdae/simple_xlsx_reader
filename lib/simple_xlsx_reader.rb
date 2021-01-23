@@ -55,18 +55,19 @@ module SimpleXlsxReader
   def self.open(file_path)
     Document.new(file_path: file_path).tap(&:sheets)
   end
-  
-  def self.open_buffer(buffer)
-    Document.new(buffer: buffer).tap(&:sheets)
+
+  def self.parse(string_or_io)
+    Document.new(string_or_io: string_or_io).tap(&:sheets)
   end
 
   class Document
-    attr_reader :file_path
-    attr_reader :buffer
+    attr_reader :string_or_io
 
-    def initialize(file_path: nil, buffer: nil)
-      @file_path = file_path
-      @buffer = buffer
+    def initialize(legacy_file_path = nil, file_path: nil, string_or_io: nil)
+      ((file_path || legacy_file_path).nil? ^ string_or_io.nil?) ||
+        fail(ArgumentError, 'either file_path or string_or_io must be provided')
+
+      @string_or_io = string_or_io || File.new(file_path || legacy_file_path)
     end
 
     def sheets
@@ -78,7 +79,7 @@ module SimpleXlsxReader
     end
 
     def xml
-      Xml.load(file_path: file_path, buffer: buffer)
+      Xml.load(string_or_io)
     end
 
     class Sheet < Struct.new(:name, :rows)
@@ -104,9 +105,9 @@ module SimpleXlsxReader
     class Xml
       attr_accessor :workbook, :shared_strings, :sheets, :sheet_rels, :styles
 
-      def self.load(file_path: nil, buffer: nil)
+      def self.load(string_or_io)
         self.new.tap do |xml|
-          zip_proc = proc do |zip|
+          SimpleXlsxReader::Zip.open_buffer(string_or_io) do |zip|
             xml.sheets = []
             xml.sheet_rels = []
 
@@ -151,13 +152,6 @@ module SimpleXlsxReader
               xml.sheets.shift
               xml.sheet_rels.shift
             end
-          end
-          if file_path
-            SimpleXlsxReader::Zip.open(file_path, &zip_proc)
-          elsif buffer
-            SimpleXlsxReader::Zip.open_buffer(buffer, &zip_proc)
-          else
-            fail 'Either file_path or buffer must be provided.'
           end
         end
       end

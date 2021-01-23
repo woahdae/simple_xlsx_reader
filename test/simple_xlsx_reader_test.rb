@@ -4,25 +4,63 @@ require 'time'
 SXR = SimpleXlsxReader
 
 describe SimpleXlsxReader do
-  let(:sesame_street_blog_file) { File.join(File.dirname(__FILE__),
-                                            'sesame_street_blog.xlsx') }
+  let(:sesame_street_blog_file_path) { File.join(File.dirname(__FILE__), 'sesame_street_blog.xlsx') }
+  let(:sesame_street_blog_io) { File.new(sesame_street_blog_file_path) }
+  let(:expected_result) do
+    {
+      "Authors"=>
+        [["Name", "Occupation"],
+          ["Big Bird", "Teacher"]],
+      "Posts"=>
+        [["Author Name", "Title", "Body", "Created At", "Comment Count", "URL"],
+          ["Big Bird", "The Number 1", "The Greatest", Time.parse("2002-01-01 11:00:00 UTC"), 1, SXR::Hyperlink.new("http://www.example.com/hyperlink-function", "This uses the HYPERLINK() function")],
+          ["Big Bird", "The Number 2", "Second Best", Time.parse("2002-01-02 14:00:00 UTC"), 2, SXR::Hyperlink.new("http://www.example.com/hyperlink-gui", "This uses the hyperlink GUI option")],
+          ["Big Bird", "Formula Dates", "Tricky tricky", Time.parse("2002-01-03 14:00:00 UTC"), 0, nil],
+          ["Empty Eagress", nil, "The title, date, and comment have types, but no values", nil, nil, nil]]
+    }
+  end
 
-  let(:subject) { SimpleXlsxReader::Document.new(sesame_street_blog_file) }
+  describe SimpleXlsxReader do
+    describe 'load from file path' do
+      let(:subject) { SimpleXlsxReader.open(sesame_street_blog_file_path) }
 
-  describe '#to_hash' do
-    it 'reads an xlsx file into a hash of {[sheet name] => [data]}' do
-      subject.to_hash.must_equal({
-        "Authors"=>
-          [["Name", "Occupation"],
-           ["Big Bird", "Teacher"]],
+      it 'reads an xlsx file into a hash of {[sheet name] => [data]}' do
+        subject.to_hash.must_equal(expected_result)
+      end
+    end
 
-        "Posts"=>
-          [["Author Name", "Title", "Body", "Created At", "Comment Count", "URL"],
-           ["Big Bird", "The Number 1", "The Greatest", Time.parse("2002-01-01 11:00:00 UTC"), 1, SXR::Hyperlink.new("http://www.example.com/hyperlink-function", "This uses the HYPERLINK() function")],
-           ["Big Bird", "The Number 2", "Second Best", Time.parse("2002-01-02 14:00:00 UTC"), 2, SXR::Hyperlink.new("http://www.example.com/hyperlink-gui", "This uses the hyperlink GUI option")],
-           ["Big Bird", "Formula Dates", "Tricky tricky", Time.parse("2002-01-03 14:00:00 UTC"), 0, nil],
-           ["Empty Eagress", nil, "The title, date, and comment have types, but no values", nil, nil, nil]]
-      })
+    describe 'load from buffer' do
+      let(:subject) { SimpleXlsxReader.parse(sesame_street_blog_io) }
+
+      it 'reads an xlsx buffer into a hash of {[sheet name] => [data]}' do
+        subject.to_hash.must_equal(expected_result)
+      end
+    end
+  end
+
+  describe SimpleXlsxReader::Document do
+    describe 'load from file path' do
+      let(:subject) { SimpleXlsxReader::Document.new(file_path: sesame_street_blog_file_path) }
+
+      it 'reads an xlsx file into a hash of {[sheet name] => [data]}' do
+        subject.to_hash.must_equal(expected_result)
+      end
+    end
+
+    describe 'load from buffer' do
+      let(:subject) { SimpleXlsxReader::Document.new(string_or_io: sesame_street_blog_io) }
+
+      it 'reads an xlsx buffer into a hash of {[sheet name] => [data]}' do
+        subject.to_hash.must_equal(expected_result)
+      end
+    end
+
+    describe 'load from file path (legacy API)' do
+      let(:subject) { SimpleXlsxReader::Document.new(sesame_street_blog_file_path) }
+
+      it 'reads an xlsx file into a hash of {[sheet name] => [data]}' do
+        subject.to_hash.must_equal(expected_result)
+      end
     end
   end
 
