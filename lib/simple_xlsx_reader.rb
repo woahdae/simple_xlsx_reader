@@ -53,14 +53,21 @@ module SimpleXlsxReader
   end
 
   def self.open(file_path)
-    Document.new(file_path).tap(&:sheets)
+    Document.new(file_path: file_path).tap(&:sheets)
+  end
+
+  def self.parse(string_or_io)
+    Document.new(string_or_io: string_or_io).tap(&:sheets)
   end
 
   class Document
-    attr_reader :file_path
+    attr_reader :string_or_io
 
-    def initialize(file_path)
-      @file_path = file_path
+    def initialize(legacy_file_path = nil, file_path: nil, string_or_io: nil)
+      ((file_path || legacy_file_path).nil? ^ string_or_io.nil?) ||
+        fail(ArgumentError, 'either file_path or string_or_io must be provided')
+
+      @string_or_io = string_or_io || File.new(file_path || legacy_file_path)
     end
 
     def sheets
@@ -72,7 +79,7 @@ module SimpleXlsxReader
     end
 
     def xml
-      Xml.load(file_path)
+      Xml.load(string_or_io)
     end
 
     class Sheet < Struct.new(:name, :rows)
@@ -98,9 +105,9 @@ module SimpleXlsxReader
     class Xml
       attr_accessor :workbook, :shared_strings, :sheets, :sheet_rels, :styles
 
-      def self.load(file_path)
+      def self.load(string_or_io)
         self.new.tap do |xml|
-          SimpleXlsxReader::Zip.open(file_path) do |zip|
+          SimpleXlsxReader::Zip.open_buffer(string_or_io) do |zip|
             xml.sheets = []
             xml.sheet_rels = []
 
