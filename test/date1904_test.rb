@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative 'test_helper'
 
 describe SimpleXlsxReader do
@@ -5,9 +7,8 @@ describe SimpleXlsxReader do
   let(:subject) { SimpleXlsxReader::Document.new(date1904_file) }
 
   it 'supports converting dates with the 1904 date system' do
-    subject.to_hash.must_equal({
-      "date1904" => [[Date.parse("2014-05-01")]]
-    })
+    _(subject.to_hash).must_equal(
+      'date1904' => [[Date.parse('2014-05-01')]]
+    )
   end
-
 end
