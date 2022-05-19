@@ -1,6 +1,6 @@
 # SimpleXlsxReader
 
-An xlsx reader for Ruby that parses xlsx cell values into plain ruby
+A **fast** xlsx reader for Ruby that parses xlsx cell values into plain ruby
 primitives and dates/times.
 
 This is *not* a rewrite of excel in Ruby. Font styles, for
@@ -9,80 +9,50 @@ then forgotten. We just want to get the data, and get out!
 
 ## Usage
 
-### Summary:
+### Summary (now with stream parsing):
 
     doc = SimpleXlsxReader.open('/path/to/workbook.xlsx')
     doc.sheets # => [<#SXR::Sheet>, ...]
     doc.sheets.first.name # 'Sheet1'
-    doc.sheets.first.rows # [['Header 1', 'Header 2', ...]
-                             ['foo', 2, ...]]
+    doc.sheets.first.rows # <SXR::Document::RowsProxy>
+    doc.sheets.first.rows.each {} # Streams the rows to your block
+    doc.sheets.first.rows.each(headers: true) {} # Streams row-hashes
+    doc.sheets.first.rows.slurp # Slurps the rows into memory
 
-That's it!
+That's the gist of it.
 
-### Load Errors
+For all the options, see the [Document](https://github.com/woahdae/simple_xlsx_reader/blob/2.0.0-pre/lib/simple_xlsx_reader/document.rb)
+object (and occompanying documentation), which is the entirety of the public
+API.
 
-By default, cell load errors (ex. if a date cell contains the string
-'hello') result in a SimpleXlsxReader::CellLoadError.
+## Why?
 
-If you would like to provide better error feedback to your users, you
-can set `SimpleXlsxReader.configuration.catch_cell_load_errors =
-true`, and load errors will instead be inserted into Sheet#load_errors keyed
-by [rownum, colnum].
+### Accurate
 
-### More
+This was written primarily because other Ruby xlsx parsers didn't
+import data with the correct types. Numbers as strings, dates as numbers,
+hyperlinks with inaccessible URLs, or the worst, simple dates as DateTime
+objects. If your app uses a timezone offset, then depending on what timezone and
+what time of day you load the xlsx file, your data might end up a day off!
+SimpleXlsxReader understands all these correctly (although this experience with
+other XLSX libraries was a long time ago, maybe they have improved).
 
-Here's the totality of the public api, in code:
+### Idiomatic
 
-    module SimpleXlsxReader
-      def self.open(file_path)
-        Document.new(file_path: file_path).tap(&:sheets)
-      end
+Also though, other Ruby xlsx parsers were very un-Ruby-like. Maybe it's because
+they're supporting all of excel's quirky features? In any case,
+SimpleXlsxReader strives to be fairly idiomatic Ruby.
 
-      def self.parse(string_or_io)
-        Document.new(string_or_io: string_or_io).tap(&:sheets)
-      end
+### Now faster
 
-      class Document
-        attr_reader :string_or_io
-
-        def initialize(legacy_file_path = nil, file_path: nil, string_or_io: nil)
-          ((file_path || legacy_file_path).nil? ^ string_or_io.nil?) ||
-            fail(ArgumentError, 'either file_path or string_or_io must be provided')
-
-          @string_or_io = string_or_io || File.new(file_path || legacy_file_path)
-        end
-
-        def sheets
-          @sheets ||= Mapper.new(xml).load_sheets
-        end
-
-        def to_hash
-          sheets.inject({}) {|acc, sheet| acc[sheet.name] = sheet.rows; acc}
-        end
-
-        def xml
-          Xml.load(string_or_io)
-        end
-
-        class Sheet < Struct.new(:name, :rows)
-          def headers
-            rows[0]
-          end
-
-          def data
-            rows[1..-1]
-          end
-
-          # Load errors will be a hash of the form:
-          # {
-          #   [rownum, colnum] => '[error]'
-          # }
-          def load_errors
-            @load_errors ||= {}
-          end
-        end
-      end
-    end
+Finally, as of v2.0, SimpleXlsxReader might be the fastest and most
+memory-efficient parser. Previously this project couldn't load anything over
+around 10k rows. Other parsers could load 100k+ rows, but were still taking
+~1gb RSS to do so, even "streaming," which seemed excessive. So a SAX
+implementation was born, bringing that particular file down to 250mb RSS (which
+is mostly just holding shared strings in memory - if your sheet doesn't use
+that xlsx feature, the overhead will be almost nothing, although
+Excel-generated xlsx files use shared strings).
 
 ## Installation
 

@@ -77,4 +77,8 @@
     <si>
         <t>Cell Fmt</t>
     </si>
+    <si>
+      <t>’ When it sees a unicode character (such as the fancy apostrophe starting this sentence), it starts chunking the stream for at least the current node, and we have to keep consuming the characters until we hit the end of the text. We can't assume that the string first given by the SAX callback us is the whole shared string content. It only happens with both unicode *and* really long text.
+      </t>
+    </si>
 </sst>
