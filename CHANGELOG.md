@@ -1,3 +1,7 @@
+### 1.0.5
+
+* Support string or io input via `SimpleXlsxReader#parse` (@kalsan, @til)
+
 ### 1.0.4
 
 * Fix Windows + RubyZip 1.2.1 bug preventing files from being read
