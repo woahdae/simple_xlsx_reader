@@ -73,9 +73,8 @@ describe SimpleXlsxReader do
 
       rows = document.sheets[1].rows
       result =
-        rows.each(headers: headers).with_index.inject({}) do |acc, (row, i)|
+        rows.each(headers: headers).with_index.with_object({}) do |(row, i), acc|
           acc[i] = row
-          acc
         end
 
       _(result[0]).must_equal(
