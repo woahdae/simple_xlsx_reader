@@ -140,12 +140,18 @@ module SimpleXlsxReader
       # * block - calls the block with successive rows until the block returns
       #   true, which it then uses that row for the headers. All data prior to
       #   finding the headers is ignored.
+      # * hash - transforms the header row by replacing cells with keys matched
+      #   by value, ex. `{id: /ID|Identity/, name: /Name/i, date: 'Date'}` would
+      #   potentially yield the row `{id: 5, name: 'Jane', date: [Date object]}`
+      #   instead of the headers from the sheet. It would also search for the
+      #   row that matches at least one header, in case the header row isn't the
+      #   first.
       #
       # If rows have been slurped, #each will iterate the slurped rows instead.
       #
       # Note, calls to this after slurping will raise if given the `headers:`
       # argument, as that's handled by the sheet parser. If this is important
-      # to someone, speak up and we could support it.
+      # to someone, speak up and we could potentially support it.
       def each(headers: false, &block)
         if slurped?
           raise '#each does not support headers with slurped rows' if headers
@@ -156,7 +162,7 @@ module SimpleXlsxReader
             @load_errors = @sheet_parser.load_errors
           end
         else
-          to_enum(:each)
+          to_enum(:each, headers: headers)
         end
       end
 

@@ -111,9 +111,12 @@ module SimpleXlsxReader
         when 'row'
           if @headers == true # ya a little funky
             @headers = @current_row
+          elsif @headers.is_a?(Hash)
+            test_headers_hash_against_current_row
+            # in case there were empty rows before finding the header
+            @last_seen_row_idx = @current_row_num - 1
           elsif @headers.respond_to?(:call)
             @headers = @current_row if @headers.call(@current_row)
-
             # in case there were empty rows before finding the header
             @last_seen_row_idx = @current_row_num - 1
           elsif @headers
@@ -141,6 +144,21 @@ module SimpleXlsxReader
 
       ###
       # /End SAX hooks
+
+      def test_headers_hash_against_current_row
+        found = false
+
+        @current_row.each_with_index do |cell, cell_idx|
+          @headers.each_pair do |key, search|
+            if search.is_a?(String) ? cell == search : cell&.match?(search)
+              found = true
+              @current_row[cell_idx] = key
+            end
+          end
+        end
+
+        @headers = @current_row if found
+      end
 
       def possibly_yield_empty_rows(headers:)
         while @current_row_num && @current_row_num > @last_seen_row_idx + 1
