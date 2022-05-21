@@ -59,6 +59,36 @@ describe SimpleXlsxReader do
       _(document.sheets[0].rows.to_a.flatten.map(&:encoding).uniq)
         .must_equal [Encoding::UTF_8]
     end
+
+    it 'can use all our enumerable nicities without slurping' do
+      document = SimpleXlsxReader.parse(sesame_street_blog_io)
+
+      headers = {
+        name: 'Author Name',
+        title: 'Title',
+        body: 'Body',
+        created_at: 'Created At',
+        count: /Count/
+      }
+
+      rows = document.sheets[1].rows
+      result =
+        rows.each(headers: headers).with_index.inject({}) do |acc, (row, i)|
+          acc[i] = row
+          acc
+        end
+
+      _(result[0]).must_equal(
+        name: 'Big Bird',
+        title: 'The Number 1',
+        body: 'The Greatest',
+        created_at: Time.parse('2002-01-01 11:00:00 UTC'),
+        count: 1,
+        "URL" => 'http://www.example.com/hyperlink-function'
+      )
+
+      _(rows.slurped?).must_equal false
+    end
   end
 
   ##
@@ -140,7 +170,7 @@ describe SimpleXlsxReader do
     let(:sheet) do
       <<~XML
         <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-          <dimension ref="A1:B6" />
+          <dimension ref="A1:B7" />
           <sheetData>
             <row r="1">
               <c r="A1" s="0">
@@ -200,6 +230,105 @@ describe SimpleXlsxReader do
           { 'Header 1' => 'Data 1-A', 'Header 2' => 'Data 1-B' },
           { 'Header 1' => nil, 'Header 2' => nil },
           { 'Header 1' => 'Data 2-A', 'Header 2' => 'Data 2-B' }
+        ]
+      )
+    end
+  end
+
+  describe "Sheet#rows#each(headers: a_hash)" do
+    let(:sheet) do
+      Nokogiri::XML(
+        <<~XML
+          <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+            <dimension ref="A1:C7" />
+            <sheetData>
+              <row r="1">
+                <c r="A1" s="0">
+                  <v>a chart or something</v>
+                </c>
+                <c r="B1" s="0">
+                  <v>Rabble rabble</v>
+                </c>
+                <c r="C1" s="0">
+                  <v>Rabble rabble</v>
+                </c>
+              </row>
+              <row r="2">
+                <c r="A2" s="0">
+                  <v>Chatty junk</v>
+                </c>
+                <c r="B2" s="0">
+                  <v></v>
+                </c>
+                <c r="C2" s="0">
+                  <v></v>
+                </c>
+              </row>
+              <row r="4">
+                <c r="A4" s="0">
+                  <v>ID Number</v>
+                </c>
+                <c r="B4" s="0">
+                  <v>ExacT</v>
+                </c>
+                <c r="C4" s="0">
+                  <v>FOO Name</v>
+                </c>
+
+              </row>
+              <row r="5">
+                <c r="A5" s="0">
+                  <v>ID 1-A</v>
+                </c>
+                <c r="B5" s="0">
+                  <v>Exact 1-B</v>
+                </c>
+                <c r="C5" s="0">
+                  <v>Name 1-C</v>
+                </c>
+              </row>
+              <row r="7">
+                <c r="A7" s="0">
+                  <v>ID 2-A</v>
+                </c>
+                <c r="B7" s="0">
+                  <v>Exact 2-B</v>
+                </c>
+                <c r="C7" s="0">
+                  <v>Name 2-C</v>
+                </c>
+              </row>
+            </sheetData>
+          </worksheet>
+        XML
+      )
+    end
+
+    it 'transforms headers into symbols based on the header map' do
+      header_map = {id: /ID/, name: /foo/i, exact: 'ExacT'}
+      result = reader.sheets[0].rows.each(headers: header_map).to_a
+
+      _(result).must_equal(
+        [
+          { id: 'ID 1-A', exact: 'Exact 1-B', name: 'Name 1-C' },
+          { id: nil, exact: nil, name: nil },
+          { id: 'ID 2-A', exact: 'Exact 2-B', name: 'Name 2-C' },
+        ]
+      )
+    end
+
+    it 'if a match isnt found, uses un-matched header name' do
+      sheet.xpath("//*[text() = 'ExacT']")
+        .first.children.first.content = 'not ExacT'
+
+      header_map = {id: /ID/, name: /foo/i, exact: 'ExacT'}
+      result = reader.sheets[0].rows.each(headers: header_map).to_a
+
+      _(result).must_equal(
+        [
+          { id: 'ID 1-A', 'not ExacT' => 'Exact 1-B', name: 'Name 1-C' },
+          { id: nil, 'not ExacT' => nil, name: nil },
+          { id: 'ID 2-A', 'not ExacT' => 'Exact 2-B', name: 'Name 2-C' },
         ]
       )
     end
@@ -280,8 +409,12 @@ describe SimpleXlsxReader do
 
     let(:rows) { reader.sheets[0].rows }
 
-    it 'returns an enumerator when not slurped' do
+    it 'with no block, returns an enumerator when not slurped' do
       _(rows.each.class).must_equal Enumerator
+    end
+
+    it 'with no block, passes on header argument in enumerator' do
+      _(rows.each(headers: true).inspect).must_match 'headers: true'
     end
 
     it 'returns an enumerator when slurped' do

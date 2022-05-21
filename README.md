@@ -43,6 +43,15 @@ Also though, other Ruby xlsx parsers were very un-Ruby-like. Maybe it's because
 they're supporting all of excel's quirky features? In any case,
 SimpleXlsxReader strives to be fairly idiomatic Ruby.
 
+Check this out with v2.0, just to show off how great Enumerable can be
+(with streaming support, no sheet slurping):
+
+    doc.sheets.first.rows.each(headers: {id: /ID/})
+      .with_index.inject({}) do |acc, (row, i)|
+        acc[i] = row[:id]
+        acc
+      end
+
 ### Now faster
 
 Finally, as of v2.0, SimpleXlsxReader might be the fastest and most
