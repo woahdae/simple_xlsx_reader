@@ -87,8 +87,11 @@ module SimpleXlsxReader
 
           slurped.each(&block)
         elsif block_given?
+          # It's possible to slurp while yielding to the block, which would
+          # null out @sheet_parser, so let's just keep track of it here too
+          sheet_parser = @sheet_parser
           @sheet_parser.parse(headers: headers, &block).tap do
-            @load_errors = @sheet_parser.load_errors
+            @load_errors = sheet_parser.load_errors
           end
         else
           to_enum(:each, headers: headers)
