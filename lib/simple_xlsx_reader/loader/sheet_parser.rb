@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'forwardable'
+
 module SimpleXlsxReader
   class Loader
     class SheetParser < Nokogiri::XML::SAX::Document
