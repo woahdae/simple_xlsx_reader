@@ -15,8 +15,8 @@ then forgotten. We just want to get the data, and get out!
     doc.sheets.first.rows # <SXR::Document::RowsProxy>
     doc.sheets.first.rows.each # an <Enumerator> ready to chain or stream
     doc.sheets.first.rows.each {} # Streams the rows to your block
-    doc.sheets.first.rows.each(headers: true) {} # Streams row-hashes
-    doc.sheets.first.rows.each(headers: {id: /ID/}) {} # finds & maps headers, streams
+    doc.sheets.first.rows.by_headers {} # Streams row-hashes
+    doc.sheets.first.rows.by_headers(id: /ID/) {} # finds & maps headers, streams
     doc.sheets.first.rows.slurp # Slurps rows into memory as a 2D array
 
 That's the gist of it!
@@ -40,11 +40,15 @@ Many Ruby xlsx parsers seem to be inspired more by Excel than Ruby, frankly.
 SimpleXlsxReader strives to be fairly idiomatic Ruby:
 
     # quick example having fun w/ ruby
+    # sheet data: [['Some IDs'], [12321], [21312], ...]
     doc = SimpleXlsxReader.open(path_or_io)
-    doc.sheets.first.rows.each(headers: {id: /ID/})
-      .with_index.with_object({}) do |(row, index), acc|
+    doc.sheets.first.rows
+      .by_headers(id: /ID/)
+      .with_index
+      .with_object({}) do |(row, index), acc|
         acc[row[:id]] = index
       end
+    # => ex. [{12321 => 1}, {21312 => 2}, ...]
 
 ### Now faster
 
@@ -62,12 +66,12 @@ Excel-generated xlsx files do use shared strings).
 ### Streaming
 
 SimpleXlsxReader is performant by default - If you use
-`rows.each {|row| ...}` it will stream the XLSX rows to your block without
-loading either the sheet XML or the row data into memory.*
+`rows.[each/by_headers] {|row| ...}` it will stream the XLSX rows to your block
+without loading either the sheet XML or the row data into memory.*
 
-You can also chain `rows.each` with other Enumerable functions without
-triggering a slurp, and you have lots of ways to find and map headers while
-streaming.
+You can also chain `rows.each`/`rows.by_headers` with other Enumerable
+functions without triggering a slurp, and you have lots of ways to find and map
+headers while streaming.
 
 If you had an excel sheet representing this data:
 
@@ -91,7 +95,7 @@ Streaming with headers, and how about a little enumerable chaining:
 ```
 # Map of hero names by ID: { 117 => 'John Halo', ... }
 
-rows.each(headers: true).with_object({}) do |row, acc|
+rows.by_headers.with_object({}) do |row, acc|
   acc[row['Hero ID']] = row['Hero Name']
 end
 ```
@@ -114,7 +118,7 @@ help find the correct header row:
 ```
 # Same map of hero names by ID: { 117 => 'John Halo', ... }
 
-rows.each(headers: {id: /ID/, name: /Name/}).with_object({}) do |row, acc|
+rows.by_headers(id: /ID/, name: /Name/).with_object({}) do |row, acc|
   acc[row[:id]] = row[:name]
 end
 ```
@@ -131,7 +135,7 @@ object_map = { Hero => { id: 'Hero ID', name: 'Hero Name', location: 'Location' 
 
 HEADERS = ['Hero ID', 'Hero Name', 'Location']
 
-rows.each(headers: ->(row) { (HEADERS & row).any? }) do |row|
+rows.by_headers(->(row) { (HEADERS & row).any? }) do |row|
   object_map.each_pair do |klass, attribute_map|
     attributes =
       attribute_map.each_pair.with_object({}) do |(key, header), attrs|
@@ -148,7 +152,8 @@ end
 To make SimpleXlsxReader rows act like an array, for use with legacy
 SimpleXlsxReader apps or otherwise, we still support slurping the whole array
 into memory. The good news is even when doing this, the xlsx worksheet & shared
-string files are never slurped into Nokogiri, so that's nice.
+string files are never slurped into Nokogiri, which saves a lot of memory vs
+our previous implementation and other ruby xlsx libs.
 
 By default, to prevent accidental slurping, `<RowsProxy>` will throw an exception
 if you try to access it with array methods like `[]` and `shift` without
@@ -159,7 +164,7 @@ Once slurped, enumerable methods on `rows` will use the slurped data
 (i.e. not re-parse the sheet), and those Array-like methods will work.
 
 We don't support all Array methods, just the few we have used in real projects,
-as we transition towards streaming instead.
+as we transition our application code to streaming.
 
 ### Load Errors
 
@@ -177,7 +182,7 @@ by [rownum, colnum]:
 
 ### * Streaming loads "shared strings" into memory
 
-SpreadsheetML, which Excel uses, has an optional feature where it will store
+SpreadsheetML, which Excel uses, has an optional compaction feature of storing
 string-type cell values in a separate, workbook-wide XML sheet, and the
 sheet XML files will reference the shared strings instead of storing the value
 directly.
@@ -185,8 +190,9 @@ directly.
 Excel seems to *always* use this feature, and while it potentially makes
 the xlsx files themselves smaller, it makes stream parsing the files more
 memory-intensive because we have to load the whole shared strings reference
-table before parsing the main sheets. At least now it does so without slurping
-the Nokogiri representation into memory.
+table before parsing the main sheets. SimpleXlsxReader does so without slurping
+the Nokogiri representation into memory, but this feature can still be a memory
+hog.
 
 For large files, say 100k rows and 20 columns, the shared strings array can be a
 million strings and ~200mb. If someone has a clever idea about making this
@@ -214,12 +220,6 @@ This project follows [semantic versioning 1.0](http://semver.org/spec/v1.0.0.htm
 
 Remember to write tests, think about edge cases, and run the existing
 suite.
-
-Note that as of commit 665cbafdde, the most extreme end of the
-linear-time performance test, which is 10,000 rows (12 columns), runs in
-~4 seconds on Ruby 2.1 on a 2012 MBP. If the linear time assertion fails
-or you're way off that, there is probably a performance regression in
-your code.
 
 Then, the standard stuff:
 

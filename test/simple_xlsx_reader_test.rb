@@ -73,7 +73,7 @@ describe SimpleXlsxReader do
 
       rows = document.sheets[1].rows
       result =
-        rows.each(headers: headers).with_index.with_object({}) do |(row, i), acc|
+        rows.by_headers(headers).with_index.with_object({}) do |(row, i), acc|
           acc[i] = row
         end
 
@@ -113,7 +113,7 @@ describe SimpleXlsxReader do
 
   let(:reader) { SimpleXlsxReader.open(xlsx.archive.path) }
 
-  describe 'Sheet#rows#each(headers: true)' do
+  describe 'Sheet#rows#by_headers' do
     let(:sheet) do
       <<~XML
         <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
@@ -151,7 +151,7 @@ describe SimpleXlsxReader do
     it 'yields rows as hashes' do
       acc = []
 
-      reader.sheets[0].rows.each(headers: true) do |row|
+      reader.sheets[0].rows.by_headers do |row|
         acc << row
       end
 
@@ -165,7 +165,7 @@ describe SimpleXlsxReader do
     end
   end
 
-  describe 'Sheet#rows#each(headers: ->(row) {...})' do
+  describe 'Sheet#rows#by_headers(->(row) {...})' do
     let(:sheet) do
       <<~XML
         <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
@@ -220,7 +220,7 @@ describe SimpleXlsxReader do
       acc = []
 
       finder = ->(row) { row.find {|c| c&.match(/Header/)} }
-      reader.sheets[0].rows.each(headers: finder) do |row|
+      reader.sheets[0].rows.by_headers(finder) do |row|
         acc << row
       end
 
@@ -234,7 +234,7 @@ describe SimpleXlsxReader do
     end
   end
 
-  describe "Sheet#rows#each(headers: a_hash)" do
+  describe "Sheet#rows#by_headers(a_hash)" do
     let(:sheet) do
       Nokogiri::XML(
         <<~XML
@@ -305,7 +305,7 @@ describe SimpleXlsxReader do
 
     it 'transforms headers into symbols based on the header map' do
       header_map = {id: /ID/, name: /foo/i, exact: 'ExacT'}
-      result = reader.sheets[0].rows.each(headers: header_map).to_a
+      result = reader.sheets[0].rows.by_headers(header_map).to_a
 
       _(result).must_equal(
         [
@@ -321,7 +321,7 @@ describe SimpleXlsxReader do
         .first.children.first.content = 'not ExacT'
 
       header_map = {id: /ID/, name: /foo/i, exact: 'ExacT'}
-      result = reader.sheets[0].rows.each(headers: header_map).to_a
+      result = reader.sheets[0].rows.by_headers(header_map).to_a
 
       _(result).must_equal(
         [
@@ -413,7 +413,7 @@ describe SimpleXlsxReader do
     end
 
     it 'with no block, passes on header argument in enumerator' do
-      _(rows.each(headers: true).inspect).must_match 'headers: true'
+      _(rows.by_headers.inspect).must_match 'headers: true'
     end
 
     it 'returns an enumerator when slurped' do

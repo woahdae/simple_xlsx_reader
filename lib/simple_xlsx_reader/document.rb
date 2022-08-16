@@ -37,12 +37,12 @@ module SimpleXlsxReader
         @rows = RowsProxy.new(sheet_parser: sheet_parser)
       end
 
-      # Legacy - consider `rows.each(headers: true)` for better performance
+      # Legacy - consider `rows.by_headers` for better performance
       def headers
         rows.slurped![0]
       end
 
-      # Legacy - consider `rows` or `rows.each(headers: true)` for better
+      # Legacy - consider `rows` or `rows.by_headers` for better
       # performance
       def data
         rows.slurped![1..-1]
@@ -61,31 +61,39 @@ module SimpleXlsxReader
         @load_errors = {}
       end
 
-      # By default, #each streams the rows to the provided block, either as
-      # arrays, or as header => cell value pairs if provided a `headers:`
-      # argument.
+      # Streams the rows to the provided block, or iterates over the rows if
+      # rows have been slurped.
+      def each(&block)
+        parse(headers: false, &block)
+      end
+
+      # Streams the rows to the provided block as header => cell value pairs.
       #
-      # `headers` can be:
+      # Options:
       #
-      # * `true` - simply takes the first row as the header row
-      # * block - calls the block with successive rows until the block returns
+      # * none - simply takes the first row as the header row
+      # * proc - calls the proc with successive rows until it returns
       #   true, which it then uses that row for the headers. All data prior to
       #   finding the headers is ignored.
       # * hash - transforms the header row by replacing cells with keys matched
-      #   by value, ex. `{id: /ID|Identity/, name: /Name/i, date: 'Date'}` would
-      #   potentially yield the row `{id: 5, name: 'Jane', date: [Date object]}`
+      #   by value, ex. `{ id: /ID|Identity/, name: /Name/i, date: 'Date' }` would
+      #   potentially yield the row `{ id: 5, name: 'Jane', date: [Date object] }`
       #   instead of the headers from the sheet. It would also search for the
       #   row that matches at least one header, in case the header row isn't the
       #   first.
       #
-      # If rows have been slurped, #each will iterate the slurped rows instead.
-      #
-      # Note, calls to this after slurping will raise if given the `headers:`
-      # argument, as that's handled by the sheet parser. If this is important
-      # to someone, speak up and we could potentially support it.
-      def each(headers: false, &block)
+      # Note, calls to this after slurping will raise, as header manipulation is
+      # handled by the streaming sheet parser. If this is important to someone,
+      # speak up and we could potentially support it.
+      def by_headers(opts = nil, &block)
+        parse(headers: opts || true, &block)
+      end
+      alias each_by_headers by_headers
+
+      # See #each and #[each_]by_headers
+      def parse(headers: false, &block)
         if slurped?
-          raise '#each does not support headers with slurped rows' if headers
+          raise 'parsing by headers after slurping is not supported' if headers
 
           slurped.each(&block)
         elsif block_given?
@@ -96,9 +104,10 @@ module SimpleXlsxReader
             @load_errors = sheet_parser.load_errors
           end
         else
-          to_enum(:each, headers: headers)
+          to_enum(:parse, headers: headers)
         end
       end
+      private :parse
 
       # Mostly for legacy support, I'm not aware of a use case for doing this
       # when you don't have to.

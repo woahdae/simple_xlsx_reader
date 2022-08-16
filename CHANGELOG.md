@@ -3,7 +3,7 @@
 * SPEED
   * Reimplement internals in terms of a SAX parser
   * Change `SimpleXlsxReader::Sheet#rows` to be a `RowsProxy` that streams `#each`
-* Convenience - use `rows#each(headers: true)` to get header names while enumerating rows
+* Convenience - use `rows#by_headers` to get header names while enumerating rows
 
 ### 1.0.5
 

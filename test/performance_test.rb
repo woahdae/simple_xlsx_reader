@@ -103,6 +103,6 @@ describe 'SimpleXlsxReader Benchmark' do
   end
 
   bench_performance_linear 'parses sheets in linear time', 0.999 do |n|
-    SimpleXlsxReader.open(@xlsxs[n].path).sheets[0].rows.each(headers: true) {|_row| }
+    SimpleXlsxReader.open(@xlsxs[n].path).sheets[0].rows.by_headers { |_row| }
   end
 end
