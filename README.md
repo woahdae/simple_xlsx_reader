@@ -1,4 +1,4 @@
-# SimpleXlsxReader [![Build Status](https://travis-ci.org/woahdae/simple_xlsx_reader.svg?branch=master)](https://travis-ci.org/woahdae/simple_xlsx_reader)
+# SimpleXlsxReader
 
 An xlsx reader for Ruby that parses xlsx cell values into plain ruby
 primitives and dates/times.
