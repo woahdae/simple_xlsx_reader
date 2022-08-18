@@ -1,7 +1,7 @@
 # SimpleXlsxReader
 
-A **fast** xlsx reader for Ruby that parses xlsx cell values into plain ruby
-primitives and dates/times.
+A [fast](#performance) xlsx reader for Ruby that parses xlsx cell values into
+plain ruby primitives and dates/times.
 
 This is *not* a rewrite of excel in Ruby. Font styles, for
 example, are parsed to determine whether a cell is a number or a date,
@@ -48,14 +48,11 @@ SimpleXlsxReader strives to be fairly idiomatic Ruby:
 
 ### Now faster
 
-Finally, as of v2.0, SimpleXlsxReader might be the fastest and most
+Finally, as of v2.0, SimpleXlsxReader is the fastest and most
 memory-efficient parser. Previously this project couldn't reasonably load
 anything over ~10k rows. Other parsers could load 100k+ rows, but were still
 taking ~1gb RSS to do so, even "streaming," which seemed excessive. So a SAX
-implementation was born, bringing some 100k-row files down to ~200mb RSS (which
-is mostly just holding shared strings in memory - if your sheet doesn't use
-that xlsx feature, the overhead will be almost nothing, although
-Excel-generated xlsx files do use shared strings).
+implementation was born. See [performance](#performance) for details.
 
 ## Usage
 
@@ -63,7 +60,7 @@ Excel-generated xlsx files do use shared strings).
 
 SimpleXlsxReader is performant by default - If you use
 `rows.each {|row| ...}` it will stream the XLSX rows to your block without
-loading either the sheet XML or the row data into memory.*
+loading either the sheet XML or the full sheet data into memory.
 
 You can also chain `rows.each` with other Enumerable functions without
 triggering a slurp, and you have lots of ways to find and map headers while
@@ -148,7 +145,7 @@ end
 To make SimpleXlsxReader rows act like an array, for use with legacy
 SimpleXlsxReader apps or otherwise, we still support slurping the whole array
 into memory. The good news is even when doing this, the xlsx worksheet & shared
-string files are never slurped into Nokogiri, so that's nice.
+string files are never loaded as a (big) Nokogiri doc, so that's nice.
 
 By default, to prevent accidental slurping, `<RowsProxy>` will throw an exception
 if you try to access it with array methods like `[]` and `shift` without
@@ -175,22 +172,43 @@ by [rownum, colnum]:
       [rownum, colnum] => '[error]'
     }
 
-### * Streaming loads "shared strings" into memory
+### Performance
 
-SpreadsheetML, which Excel uses, has an optional feature where it will store
-string-type cell values in a separate, workbook-wide XML sheet, and the
-sheet XML files will reference the shared strings instead of storing the value
-directly.
+SimpleXlsxReader is (as of this writing) the fastest and most memory efficient
+Ruby xlsx parser.
 
-Excel seems to *always* use this feature, and while it potentially makes
-the xlsx files themselves smaller, it makes stream parsing the files more
-memory-intensive because we have to load the whole shared strings reference
-table before parsing the main sheets. At least now it does so without slurping
-the Nokogiri representation into memory.
+Recent updates here have focused on large spreadsheets with especially
+non-unique strings in sheets using xlsx' shared strings feature
+(Excel-generated spreadsheets always use this). Other projects have implemented
+streaming parsers for the sheet data, but currently none stream while loading
+the shared strings file, which is the second-largest file in an xlsx archive
+and can represent millions of strings in large files.
 
-For large files, say 100k rows and 20 columns, the shared strings array can be a
-million strings and ~200mb. If someone has a clever idea about making this
-more memory efficient, speak up!
+For more details, see [my fork of @shkm's excel benchmark project](https://github.com/woahdae/excel-parsing-benchmarks), but here's the summary:
+
+1mb excel file, 10,000 rows of sample "sales records" with a fair amount of
+non-unique strings (ran on an M1 Macbook Pro):
+
+| Gem                | Parses/second | RSS Increase | Allocated Mem | Retained Mem | Allocated Objects | Retained Objects |
+|--------------------|---------------|--------------|---------------|--------------|-------------------|------------------|
+| simple_xlsx_reader | 1.13          | 36.94mb      | 614.51mb      | 1.13kb       | 8796275           | 3                |
+| roo                | 0.75          | 74.0mb       | 164.47mb      | 2.18kb       | 2128396           | 4                |
+| creek              | 0.65          | 107.55mb     | 581.38mb      | 3.3kb        | 7240760           | 16               |
+| xsv                | 0.61          | 75.66mb      | 2127.42mb     | 3.66kb       | 5922563           | 10               |
+| rubyxl             | 0.27          | 373.52mb     | 716.7mb       | 2.18kb       | 10612577          | 4                |
+
+Here is a benchmark for the "worst" file I've seen, a 26mb file whose shared
+strings represent 10% of the archive (note, MemoryProfiler has too much
+overhead to reasonably measure allocations so that analysis was left off, and
+we just measure total time for one parse):
+
+| Gem                | Time    | RSS Increase |
+|--------------------|---------|--------------|
+| simple_xlsx_reader | 28.71s  | 148.77mb     |
+| roo                | 40.25s  | 1322.08mb    |
+| xsv                | 45.82s  | 391.27mb     |
+| creek              | 60.63s  | 886.81mb     |
+| rubyxl             | 238.68s | 9136.3mb     |
 
 ## Installation
 
