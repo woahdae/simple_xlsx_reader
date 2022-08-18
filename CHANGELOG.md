@@ -1,4 +1,4 @@
-### 2.0.0.pre
+### 2.0.0
 
 * SPEED
   * Reimplement internals in terms of a SAX parser
