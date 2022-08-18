@@ -84,11 +84,7 @@ module SimpleXlsxReader
               url: @url || hyperlinks_by_cell&.[](@cell_name),
               shared_strings: shared_strings,
               base_date: base_date
-            ).tap do |val|
-              # Sometimes string values from the SAX parsers are ASCII-8bit,
-              # something to do with IO inputs. In any case we can force UTF-8.
-              val.force_encoding('UTF-8') if val.is_a?(String)
-            end
+            )
           rescue StandardError => e
             column, row = @cell_name.match(/([A-Z]+)([0-9]+)/).captures
             col_idx = column_letter_to_number(column) - 1

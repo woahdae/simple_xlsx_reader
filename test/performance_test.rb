@@ -6,7 +6,7 @@ require 'minitest/benchmark'
 describe 'SimpleXlsxReader Benchmark' do
   # n is 0-indexed for us, then converted to 1-indexed for excel
   def sheet_with_n_rows(row_count)
-    acc = String.new
+    acc = +""
     acc <<
       <<~XML
         <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">

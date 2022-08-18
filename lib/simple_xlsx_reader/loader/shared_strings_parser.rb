@@ -24,7 +24,7 @@ module SimpleXlsxReader
 
       def start_element(name, _attrs = [])
         case name
-        when 'si' then @current_string = String.new
+        when 'si' then @current_string = +"" # UTF-8 variant of String.new
         when 't' then @extract = true
         end
       end
