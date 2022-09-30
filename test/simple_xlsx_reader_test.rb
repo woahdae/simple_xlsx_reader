@@ -827,6 +827,10 @@ describe SimpleXlsxReader do
                 <c r='I1' s='0'>
                   <v>GUI-made hyperlink</v>
                 </c>
+
+                <c r='J1' s='0'>
+                  <v>1</v>
+                </c>
               </row>
             </sheetData>
 
@@ -925,6 +929,10 @@ describe SimpleXlsxReader do
         )
       )
     end
+    
+    it "reads 'Generic' cells with numbers as numbers" do
+      _(@row[9]).must_equal 1
+    end
   end
 
   describe 'parsing documents with blank rows' do
@@ -936,7 +944,7 @@ describe SimpleXlsxReader do
             <sheetData>
             <row r="2" spans="1:1">
               <c r="A2" s="0">
-                <v>0</v>
+                <v>a</v>
               </c>
             </row>
             <row r="4" spans="1:1">
@@ -967,12 +975,12 @@ describe SimpleXlsxReader do
     it 'reads row data despite gaps in row numbering' do
       _(@rows).must_equal [
         [nil, nil, nil, nil],
-        ['0', nil, nil, nil],
+        ['a', nil, nil, nil],
         [nil, nil, nil, nil],
-        [nil, '1', nil, nil],
-        [nil, nil, '2', nil],
+        [nil, 1, nil, nil],
+        [nil, nil, 2, nil],
         [nil, nil, nil, nil],
-        [nil, nil, nil, '3']
+        [nil, nil, nil, 3]
       ]
     end
   end

@@ -149,7 +149,15 @@ module SimpleXlsxReader
         # detected earlier and cast here by its standardized symbol
         ##
 
-        when :string, :unsupported
+        when :string
+          if (Integer(value) rescue false)
+            value.to_i
+          elsif (Float(value) rescue false)
+            value.to_f
+          else
+            value
+          end
+        when :unsupported
           value
         when :fixnum
           value.to_i
