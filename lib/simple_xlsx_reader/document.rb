@@ -8,14 +8,16 @@ module SimpleXlsxReader
   # Main class for the public API. See the README for usage examples,
   # or read the code, it's pretty friendly.
   class Document
-    attr_reader :file_path
+    attr_reader :string_or_io
 
-    def initialize(file_path)
-      @file_path = file_path
+    def initialize(legacy_file_path = nil, file_path: nil, string_or_io: nil)
+      fail(ArgumentError, 'either file_path or string_or_io must be provided') if legacy_file_path.nil? && file_path.nil? && string_or_io.nil?
+  
+      @string_or_io = string_or_io || File.new(legacy_file_path || file_path)
     end
 
     def sheets
-      @sheets ||= Loader.new(file_path).init_sheets
+      @sheets ||= Loader.new(string_or_io).init_sheets
     end
 
     # Expensive because it slurps all the sheets into memory,
