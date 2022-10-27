@@ -42,8 +42,11 @@ module SimpleXlsxReader
     end
 
     def open(file_path)
-      Document.new(file_path).tap(&:sheets)
+      Document.new(file_path: file_path).tap(&:sheets)
     end
-    alias parse open
+    
+    def parse(string_or_io)
+      Document.new(string_or_io: string_or_io).tap(&:sheets)
+    end
   end
 end

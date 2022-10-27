@@ -18,6 +18,7 @@ describe SimpleXlsxReader do
 
   let(:sesame_street_blog_file_path) { File.join(File.dirname(__FILE__), 'sesame_street_blog.xlsx') }
   let(:sesame_street_blog_io) { File.new(sesame_street_blog_file_path) }
+  let(:sesame_street_blog_string) { IO.read(sesame_street_blog_file_path) }
 
   let(:expected_result) do
     {
@@ -50,6 +51,14 @@ describe SimpleXlsxReader do
       let(:subject) { SimpleXlsxReader.parse(sesame_street_blog_io) }
 
       it 'reads an xlsx buffer into a hash of {[sheet name] => [data]}' do
+        _(subject.to_hash).must_equal(expected_result)
+      end
+    end
+
+    describe 'load from string' do
+      let(:subject) { SimpleXlsxReader.parse(sesame_street_blog_io) }
+
+      it 'reads an xlsx string into a hash of {[sheet name] => [data]}' do
         _(subject.to_hash).must_equal(expected_result)
       end
     end
