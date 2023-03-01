@@ -1,3 +1,8 @@
+### 2.0.1
+
+* Restore ability to parse IO strings (@robbevp)
+* Add Ruby 3.1 and 3.2 to CI (@taichi-ishitani)
+
 ### 2.0.0
 
 * SPEED
