@@ -984,4 +984,21 @@ describe SimpleXlsxReader do
       ]
     end
   end
+
+  # https://support.microsoft.com/en-us/office/available-number-formats-in-excel-0afe8f52-97db-41f1-b972-4b46e9f1e8d2
+  describe 'numeric fields styled as "General"' do
+    let(:misc_numbers_path) do
+      File.join(File.dirname(__FILE__), 'misc_numbers.xlsx')
+    end
+
+    let(:sheet) { SimpleXlsxReader.open(misc_numbers_path).sheets[0] }
+
+    it 'reads medium sized integers as integers' do
+      _(sheet.rows.slurp[1][0]).must_equal 98070
+    end
+
+    it 'reads large (>12 char) integers as integers' do
+      _(sheet.rows.slurp[1][1]).must_equal 1234567890123
+    end
+  end
 end

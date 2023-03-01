@@ -149,14 +149,12 @@ module SimpleXlsxReader
         # detected earlier and cast here by its standardized symbol
         ##
 
-        when :string
-          if (Integer(value) rescue false)
-            value.to_i
-          elsif (Float(value) rescue false)
-            value.to_f
-          else
-            value
-          end
+        # no type encoded with the the General format defaults to a number type
+        when nil, :string
+          retval = Integer(value, exception: false)
+          retval ||= Float(value, exception: false)
+          retval ||= value
+          retval
         when :unsupported
           value
         when :fixnum
