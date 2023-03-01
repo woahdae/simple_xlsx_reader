@@ -1,3 +1,16 @@
+### 3.0.0
+
+* Change the way we typecast cells in the General format. This probably won't
+  break anything in your app, but it's a change in behavior that theoretically
+  could.
+
+  Previously, we were treating cells using General the format as strings, when
+  according to the Office XML standard, they should be treated as numbers. We
+  now attempt to cast such cells as numbers, and fall back to strings if number
+  casting fails.
+
+  Thanks @jrodrigosm
+
 ### 2.0.1
 
 * Restore ability to parse IO strings (@robbevp)
