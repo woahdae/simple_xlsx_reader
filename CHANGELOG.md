@@ -1,3 +1,12 @@
+### 4.0.0
+
+* Fix percentage rounding errors. Previously we were dividing by 100, when we
+  actually don't need to, so percentage types were 100x too small. Fixes #21.
+  Major bump because workarounds might have been implemented for previous
+  incorrect behavior.
+* Fix small oddity in one currency format where round numbers would be cast
+  to an integer instead of a float.
+
 ### 3.0.1
 
 * Fix parsing "chunky" UTF-8 workbooks. Closes issues #39 and #45. See ce67f0d4.
