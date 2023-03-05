@@ -1015,4 +1015,21 @@ describe SimpleXlsxReader do
       )
     end
   end
+
+  describe 'when using percentages & currencies' do
+    let(:pnc_path) do
+      # This file provided by a GitHub user having parse errors in these fields
+      File.join(File.dirname(__FILE__), 'percentages_n_currencies.xlsx')
+    end
+
+    let(:sheet) { SimpleXlsxReader.open(pnc_path).sheets[0] }
+
+    it 'reads percentages as floats of the form 0.XX' do
+      _(sheet.rows.slurp[1][2]).must_equal(0.87)
+    end
+
+    it 'reads currencies as floats' do
+      _(sheet.rows.slurp[1][4]).must_equal(300.0)
+    end
+  end
 end

@@ -162,7 +162,7 @@ module SimpleXlsxReader
         when :float
           value.to_f
         when :percentage
-          value.to_f / 100
+          value.to_f
         # the trickiest. note that  all these formats can vary on
         # whether they actually contain a date, time, or datetime.
         when :date, :time, :date_time

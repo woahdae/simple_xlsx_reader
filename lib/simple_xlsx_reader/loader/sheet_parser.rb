@@ -103,7 +103,6 @@ module SimpleXlsxReader
             end
           end
 
-
         # For some reason I can't figure out in a reasonable timeframe,
         # SAX parsing some workbooks captures separate strings in the same cell
         # when we encounter UTF-8, although I can't get workbooks made in my
