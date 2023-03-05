@@ -77,7 +77,7 @@ module SimpleXlsxReader
 
         return unless @capture
 
-        @current_row[cell_idx] =
+        captured =
           begin
             SimpleXlsxReader::Loader.cast(
               string.strip, @type, @style,
@@ -102,6 +102,17 @@ module SimpleXlsxReader
               string.strip
             end
           end
+
+
+        # For some reason I can't figure out in a reasonable timeframe,
+        # SAX parsing some workbooks captures separate strings in the same cell
+        # when we encounter UTF-8, although I can't get workbooks made in my
+        # own version of excel to repro it. Our fix is just to keep building
+        # the string in this case, although maybe there's a setting in Nokogiri
+        # to make it not do this (looked, couldn't find it).
+        #
+        # Loading the workbook test/chunky_utf8.xlsx repros the issue.
+        @captured = @captured ? @captured + captured : captured
       end
 
       def end_element(name)
@@ -134,7 +145,10 @@ module SimpleXlsxReader
           # isn't the most robust strategy, but it likely fits 99% of use cases
           # considering it's not a problem with actual excel docs.
           @dimension = "A1:#{@cell_name}" if @dimension.nil?
-        when 'v', 't' then @capture = false
+        when 'v', 't'
+          @current_row[cell_idx] = @captured
+          @capture = false
+          @captured = nil
         when 'f' then @function = false
         when 'c' then @url = nil
         end

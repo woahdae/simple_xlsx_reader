@@ -1001,4 +1001,18 @@ describe SimpleXlsxReader do
       _(sheet.rows.slurp[1][1]).must_equal 1234567890123
     end
   end
+
+  describe 'with mysteriously chunky UTF-8 text' do
+    let(:chunky_utf8_path) do
+      File.join(File.dirname(__FILE__), 'chunky_utf8.xlsx')
+    end
+
+    let(:sheet) { SimpleXlsxReader.open(chunky_utf8_path).sheets[0] }
+
+    it 'reads the whole cell text' do
+      _(sheet.rows.slurp[1]).must_equal(
+        ["sample-company-1", "Korntal-Münchingen", "Bronholmer straße"]
+      )
+    end
+  end
 end
