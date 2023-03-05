@@ -1,3 +1,7 @@
+### 3.0.1
+
+* Fix parsing "chunky" UTF-8 workbooks. Closes issues #39 and #45. See ce67f0d4.
+
 ### 3.0.0
 
 * Change the way we typecast cells in the General format. This probably won't
