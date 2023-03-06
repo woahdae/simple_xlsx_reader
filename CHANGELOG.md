@@ -1,3 +1,14 @@
+### 4.0.1
+
+* Fix nil error when handling some inline strings
+
+  Inline strings are almost exclusively used by non-Excel XLSX
+  implementations, but are valid, and sometimes have nil chunks.
+
+  Also, inline strings weren't preserving whitespace if Nokogiri is
+  parsing the string in chunks, as it does when encountering escaped
+  characters. Fixed.
+
 ### 4.0.0
 
 * Fix percentage rounding errors. Previously we were dividing by 100, when we
