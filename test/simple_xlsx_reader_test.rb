@@ -122,6 +122,52 @@ describe SimpleXlsxReader do
 
   let(:reader) { SimpleXlsxReader.open(xlsx.archive.path) }
 
+  describe 'when parsing escaped characters' do
+    let(:escaped_content) do
+      '&lt;a href="https://www.example.com"&gt;Link A&lt;/a&gt; &amp;bull; &lt;a href="https://www.example.com"&gt;Link B&lt;/a&gt;'
+    end
+
+    let(:unescaped_content) do
+      '<a href="https://www.example.com">Link A</a> &bull; <a href="https://www.example.com">Link B</a>'
+    end
+
+    let(:sheet) do
+      <<~XML
+        <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+          <dimension ref="A1:B1" />
+          <sheetData>
+            <row r="1">
+              <c r="A1" s="1" t="s">
+                <v>0</v>
+              </c>
+              <c r='B1' s='0'>
+                <v>#{escaped_content}</v>
+              </c>
+            </row>
+          </sheetData>
+        </worksheet>
+      XML
+    end
+
+    let(:shared_strings) do
+      <<~XML
+        <sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="1" uniqueCount="1">
+          <si>
+            <t>#{escaped_content}</t>
+          </si>
+        </sst>
+      XML
+    end
+
+    it 'loads correctly using inline strings' do
+      _(reader.sheets[0].rows.slurp[0][0]).must_equal(unescaped_content)
+    end
+
+    it 'loads correctly using shared strings' do
+      _(reader.sheets[0].rows.slurp[0][1]).must_equal(unescaped_content)
+    end
+  end
+
   describe 'Sheet#rows#each(headers: true)' do
     let(:sheet) do
       <<~XML
@@ -929,7 +975,7 @@ describe SimpleXlsxReader do
         )
       )
     end
-    
+
     it "reads 'Generic' cells with numbers as numbers" do
       _(@row[9]).must_equal 1
     end

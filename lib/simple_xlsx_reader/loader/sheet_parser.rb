@@ -80,7 +80,7 @@ module SimpleXlsxReader
         captured =
           begin
             SimpleXlsxReader::Loader.cast(
-              string.strip, @type, @style,
+              string, @type, @style,
               url: @url || hyperlinks_by_cell&.[](@cell_name),
               shared_strings: shared_strings,
               base_date: base_date
@@ -99,7 +99,7 @@ module SimpleXlsxReader
             else
               @load_errors[[row_idx, col_idx]] = e.message
 
-              string.strip
+              string
             end
           end
 
@@ -111,7 +111,7 @@ module SimpleXlsxReader
         # to make it not do this (looked, couldn't find it).
         #
         # Loading the workbook test/chunky_utf8.xlsx repros the issue.
-        @captured = @captured ? @captured + captured : captured
+        @captured = @captured ? @captured + (captured || '') : captured
       end
 
       def end_element(name)

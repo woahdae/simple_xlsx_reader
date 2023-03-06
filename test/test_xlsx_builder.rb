@@ -57,7 +57,6 @@ TestXlsxBuilder = Struct.new(:shared_strings, :styles, :sheets, :workbook, :rels
     self.styles ||= DEFAULTS[:styles]
     self.sheets ||= [DEFAULTS[:sheet]]
     self.rels ||= []
-    self.shared_strings ||= []
   end
 
   def archive
@@ -76,7 +75,7 @@ TestXlsxBuilder = Struct.new(:shared_strings, :styles, :sheets, :workbook, :rels
         styles_file.write(styles)
       end
 
-      if shared_strings.any?
+      if shared_strings
         zip.get_output_stream('xl/sharedStrings.xml') do |ss_file|
           ss_file.write(shared_strings)
         end
