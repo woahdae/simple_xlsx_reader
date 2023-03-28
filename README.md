@@ -12,12 +12,12 @@ then forgotten. We just want to get the data, and get out!
     doc = SimpleXlsxReader.open('/path/to/workbook.xlsx')
     doc.sheets # => [<#SXR::Sheet>, ...]
     doc.sheets.first.name # 'Sheet1'
-    doc.sheets.first.rows # <SXR::Document::RowsProxy>
-    doc.sheets.first.rows.each # an <Enumerator> ready to chain or stream
-    doc.sheets.first.rows.each {} # Streams the rows to your block
-    doc.sheets.first.rows.each(headers: true) {} # Streams row-hashes
-    doc.sheets.first.rows.each(headers: {id: /ID/}) {} # finds & maps headers, streams
-    doc.sheets.first.rows.slurp # Slurps rows into memory as a 2D array
+    rows = doc.sheet.first.rows # <SXR::Document::RowsProxy>
+    rows.each # an <Enumerator> ready to chain or stream
+    rows.each {} # Streams the rows to your block
+    rows.each(headers: true) {} # Streams row-hashes
+    rows.each(headers: {id: /ID/}) {} # finds & maps headers, streams
+    rows.slurp # Slurps rows into memory as a 2D array
 
 That's the gist of it!
 
@@ -29,7 +29,8 @@ See also the [Document](https://github.com/woahdae/simple_xlsx_reader/blob/2.0.0
 
 This project was started years ago, primarily because other Ruby xlsx parsers
 didn't import data with the correct types. Numbers as strings, dates as numbers,
-hyperlinks with inaccessible URLs, or - subtly buggy - simple dates as DateTime
+[hyperlinks](https://github.com/woahdae/simple_xlsx_reader/blob/master/lib/simple_xlsx_reader/hyperlink.rb)
+with inaccessible URLs, or - subtly buggy - simple dates as DateTime
 objects. If your app uses a timezone offset, depending on what timezone and
 what time of day you load the xlsx file, your dates might end up a day off!
 SimpleXlsxReader understands all these correctly.
@@ -233,11 +234,9 @@ This project follows [semantic versioning 1.0](http://semver.org/spec/v1.0.0.htm
 Remember to write tests, think about edge cases, and run the existing
 suite.
 
-Note that as of commit 665cbafdde, the most extreme end of the
-linear-time performance test, which is 10,000 rows (12 columns), runs in
-~4 seconds on Ruby 2.1 on a 2012 MBP. If the linear time assertion fails
-or you're way off that, there is probably a performance regression in
-your code.
+The full suite contains a performance test that on an M1 MBP runs the final
+large file in about five seconds. Check out that test before & after your
+change to check for performance changes.
 
 Then, the standard stuff:
 
