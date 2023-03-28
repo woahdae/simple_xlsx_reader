@@ -92,7 +92,7 @@ describe SimpleXlsxReader do
         body: 'The Greatest',
         created_at: Time.parse('2002-01-01 11:00:00 UTC'),
         count: 1,
-        "URL" => 'http://www.example.com/hyperlink-function'
+        "URL" => 'This uses the HYPERLINK() function'
       )
 
       _(rows.slurped?).must_equal false

@@ -1,3 +1,9 @@
+### 5.0.0
+
+* Change SimpleXlsxReader::Hyperlink to default to the visible cell value
+  instead of the hyperlink URL, which in the case of mailto hyperlinks is
+  surprising.
+
 ### 4.0.1
 
 * Fix nil error when handling some inline strings
