@@ -9,15 +9,17 @@ then forgotten. We just want to get the data, and get out!
 
 ## Summary (now with stream parsing):
 
-    doc = SimpleXlsxReader.open('/path/to/workbook.xlsx')
-    doc.sheets # => [<#SXR::Sheet>, ...]
-    doc.sheets.first.name # 'Sheet1'
-    rows = doc.sheet.first.rows # <SXR::Document::RowsProxy>
-    rows.each # an <Enumerator> ready to chain or stream
-    rows.each {} # Streams the rows to your block
-    rows.each(headers: true) {} # Streams row-hashes
-    rows.each(headers: {id: /ID/}) {} # finds & maps headers, streams
-    rows.slurp # Slurps rows into memory as a 2D array
+```ruby
+doc = SimpleXlsxReader.open('/path/to/workbook.xlsx')
+doc.sheets # => [<#SXR::Sheet>, ...]
+doc.sheets.first.name # 'Sheet1'
+rows = doc.sheet.first.rows # <SXR::Document::RowsProxy>
+rows.each # an <Enumerator> ready to chain or stream
+rows.each {} # Streams the rows to your block
+rows.each(headers: true) {} # Streams row-hashes
+rows.each(headers: {id: /ID/}) {} # finds & maps headers, streams
+rows.slurp # Slurps rows into memory as a 2D array
+```
 
 That's the gist of it!
 
@@ -40,12 +42,14 @@ SimpleXlsxReader understands all these correctly.
 Many Ruby xlsx parsers seem to be inspired more by Excel than Ruby, frankly.
 SimpleXlsxReader strives to be fairly idiomatic Ruby:
 
-    # quick example having fun w/ ruby
-    doc = SimpleXlsxReader.open(path_or_io)
-    doc.sheets.first.rows.each(headers: {id: /ID/})
-      .with_index.with_object({}) do |(row, index), acc|
-        acc[row[:id]] = index
-      end
+```ruby
+# quick example having fun w/ ruby
+doc = SimpleXlsxReader.open(path_or_io)
+doc.sheets.first.rows.each(headers: {id: /ID/})
+  .with_index.with_object({}) do |(row, index), acc|
+    acc[row[:id]] = index
+end
+```
 
 ### Now faster
 
@@ -78,15 +82,19 @@ If you had an excel sheet representing this data:
 
 Get a handle on the rows proxy:
 
-`rows = SimpleXlsxReader.open('suited_heroes.xlsx').sheets.first.rows`
+```ruby
+rows = SimpleXlsxReader.open('suited_heroes.xlsx').sheets.first.rows
+```
 
 Simple streaming (kinda boring):
 
-`rows.each { |row| ... }`
+```ruby
+rows.each { |row| ... }
+````
 
 Streaming with headers, and how about a little enumerable chaining:
 
-```
+```ruby
 # Map of hero names by ID: { 117 => 'John Halo', ... }
 
 rows.each(headers: true).with_object({}) do |row, acc|
@@ -109,7 +117,7 @@ Sometimes though you have some junk at the top of your spreadsheet:
 For this, `headers` can be a hash whose keys replace headers and whose values
 help find the correct header row:
 
-```
+```ruby
 # Same map of hero names by ID: { 117 => 'John Halo', ... }
 
 rows.each(headers: {id: /ID/, name: /Name/}).with_object({}) do |row, acc|
@@ -120,7 +128,7 @@ end
 If your header-to-attribute mapping is more complicated than key/value, you
 can do the mapping elsewhere, but use a block to find the header row:
 
-```
+```ruby
 # Example roughly analogous to some production code mapping a single spreadsheet
 # across many objects. Might be a simpler way now that we have the headers-hash
 # feature.
@@ -169,9 +177,11 @@ can set `SimpleXlsxReader.configuration.catch_cell_load_errors =
 true`, and load errors will instead be inserted into Sheet#load_errors keyed
 by [rownum, colnum]:
 
-    {
-      [rownum, colnum] => '[error]'
-    }
+```ruby
+{
+  [rownum, colnum] => '[error]'
+}
+```
 
 ### Performance
 
