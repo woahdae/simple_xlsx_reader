@@ -31,9 +31,8 @@ module SimpleXlsxReader
         @url = nil # silence warnings
         @function = nil # silence warnings
         @capture = nil # silence warnings
+        @captured = nil # silence warnings
         @dimension = nil # silence warnings
-
-        @file_io.rewind # in case we've already parsed this once
 
         # In this project this is only used for GUI-made hyperlinks (as opposed
         # to FUNCTION-based hyperlinks). Unfortunately the're needed to parse
@@ -44,8 +43,9 @@ module SimpleXlsxReader
         if xrels_file&.grep(/hyperlink/)&.any?
           xrels_file.rewind
           load_gui_hyperlinks # represented as hyperlinks_by_cell
-          @file_io.rewind
         end
+
+        @file_io.rewind # in case we've already parsed this once
 
         Nokogiri::XML::SAX::Parser.new(self).parse(@file_io)
       end

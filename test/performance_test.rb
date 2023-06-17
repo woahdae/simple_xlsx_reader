@@ -70,7 +70,7 @@ describe 'SimpleXlsxReader Benchmark' do
   let(:styles) do
     # s='0' above refers to the value of numFmtId at cellXfs index 0,
     # which is in this case 'General' type
-    styles =
+    _styles =
       <<-XML
         <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
           <cellXfs count="1">
