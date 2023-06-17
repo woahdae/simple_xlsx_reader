@@ -3,6 +3,7 @@
 * Change SimpleXlsxReader::Hyperlink to default to the visible cell value
   instead of the hyperlink URL, which in the case of mailto hyperlinks is
   surprising.
+* Fix blank content when parsing docs from string (@codemole)
 
 ### 4.0.1
 
