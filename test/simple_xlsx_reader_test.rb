@@ -1031,6 +1031,52 @@ describe SimpleXlsxReader do
     end
   end
 
+  describe 'parsing documents with non-hyperlinked rels' do
+    let(:rels) do
+      [
+        Nokogiri::XML(
+          <<-XML
+          <?xml version="1.0" encoding="UTF-8"?>
+          <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>
+          XML
+        ).remove_namespaces!
+      ]
+    end
+
+    describe 'when document is opened as path' do
+      before do
+        @row = SimpleXlsxReader.open(xlsx.archive.path).sheets[0].rows.to_a[0]
+      end
+
+      it 'reads cell content' do
+        _(@row[0]).must_equal 'Cell A'
+      end
+    end
+
+    describe 'when document is parsed as a String' do
+      before do
+        output = File.binread(xlsx.archive.path)
+        @row = SimpleXlsxReader.parse(output).sheets[0].rows.to_a[0]
+      end
+
+      it 'reads cell content' do
+        _(@row[0]).must_equal 'Cell A'
+      end
+    end
+
+    describe 'when document is parsed as StringIO' do
+      before do
+        stream = StringIO.new(File.binread(xlsx.archive.path), 'rb')
+        @row = SimpleXlsxReader.parse(stream).sheets[0].rows.to_a[0]
+        stream.close
+      end
+
+      it 'reads cell content' do
+        _(@row[0]).must_equal 'Cell A'
+      end
+    end
+  end
+
   # https://support.microsoft.com/en-us/office/available-number-formats-in-excel-0afe8f52-97db-41f1-b972-4b46e9f1e8d2
   describe 'numeric fields styled as "General"' do
     let(:misc_numbers_path) do
