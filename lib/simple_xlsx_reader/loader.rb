@@ -118,7 +118,7 @@ module SimpleXlsxReader
     # options:
     # - shared_strings: needed for 's' (shared string) type
     def self.cast(value, type, style, options = {})
-      return nil if value.nil? || value.empty?
+      return '' if value.nil? || value.empty? # HACK
 
       # Sometimes the type is dictated by the style alone
       if type.nil? ||
@@ -126,8 +126,11 @@ module SimpleXlsxReader
         type = style
       end
 
+      type = 'hack' if !(%w(s str inlineStr) + %i(date time date_time)).include? type # HACK
       casted =
         case type
+        when 'hack'
+          value
 
         ##
         # There are few built-in types
@@ -177,7 +180,7 @@ module SimpleXlsxReader
             seconds = (fraction_of_24 * 86_400).round
             return Time.utc(date.year, date.month, date.day) + seconds
           else
-            return date
+            return date.strftime("%Y/%m/%d") # HACK
           end
         when :bignum
           if defined?(BigDecimal)
@@ -202,4 +205,3 @@ module SimpleXlsxReader
     end
   end
 end
-
