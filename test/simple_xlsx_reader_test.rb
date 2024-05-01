@@ -56,7 +56,7 @@ describe SimpleXlsxReader do
     end
 
     describe 'load from string' do
-      let(:subject) { SimpleXlsxReader.parse(sesame_street_blog_io) }
+      let(:subject) { SimpleXlsxReader.parse(sesame_street_blog_string) }
 
       it 'reads an xlsx string into a hash of {[sheet name] => [data]}' do
         _(subject.to_hash).must_equal(expected_result)
