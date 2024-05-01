@@ -44,7 +44,7 @@ SimpleXlsxReader strives to be fairly idiomatic Ruby:
 
 ```ruby
 # quick example having fun w/ ruby
-doc = SimpleXlsxReader.open(path_or_io)
+doc = SimpleXlsxReader.open(file_path) # or SimpleXlsxReader.parse(string_or_io)
 doc.sheets.first.rows.each(headers: {id: /ID/})
   .with_index.with_object({}) do |(row, index), acc|
     acc[row[:id]] = index
