@@ -33,6 +33,7 @@ module SimpleXlsxReader
         @capture = nil # silence warnings
         @captured = nil # silence warnings
         @dimension = nil # silence warnings
+        @column_index = 0
 
         # In this project this is only used for GUI-made hyperlinks (as opposed
         # to FUNCTION-based hyperlinks). Unfortunately the're needed to parse
@@ -54,16 +55,21 @@ module SimpleXlsxReader
       # SAX document hooks
 
       def start_element(name, attrs = [])
+        attrs ||= []
+        name = strip_namespace(name)
+
         case name
         when 'dimension' then @dimension = attrs.last.last
         when 'row'
           @current_row_num = attrs.find {|(k, v)| k == 'r'}&.last&.to_i
           @current_row = Array.new(column_length)
+          @column_index = 0
         when 'c'
           attrs = attrs.inject({}) {|acc, (k, v)| acc[k] = v; acc}
-          @cell_name = attrs['r']
+          @cell_name = attrs['r'] || column_number_to_letter(@column_index)
           @type = attrs['t']
           @style = attrs['s'] && style_types[attrs['s'].to_i]
+          @column_index += 1
         when 'f' then @function = true
         when 'v', 't' then @capture = true
         end
@@ -115,6 +121,8 @@ module SimpleXlsxReader
       end
 
       def end_element(name)
+        name = strip_namespace(name)
+
         case name
         when 'row'
           if @headers == true # ya a little funky
@@ -155,6 +163,10 @@ module SimpleXlsxReader
 
       ###
       # /End SAX hooks
+
+      def strip_namespace(name)
+        name.split(':').last
+      end
 
       def test_headers_hash_against_current_row
         found = false
@@ -263,6 +275,16 @@ module SimpleXlsxReader
           pow -= 1
         end
         result
+      end
+
+      def column_number_to_letter(n)
+        result = []
+        loop do
+          result.unshift((n % 26 + 65).chr)
+          n = (n / 26) - 1
+          break if n < 0
+        end
+        result.join
       end
     end
   end
