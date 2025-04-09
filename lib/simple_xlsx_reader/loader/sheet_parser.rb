@@ -35,7 +35,15 @@ module SimpleXlsxReader
         @dimension = nil # silence warnings
         @column_index = 0
 
-        @file_io.rewind # in case we've already parsed this once
+        @file_io.rewind # if it's IO from IO.read, we need to rewind it
+
+        @strip_namespace =
+          begin
+            @file_io.gets # xml header
+            wb = @file_io.gets
+            @file_io.rewind
+            wb&.include?(':worksheet')
+          end
 
         # In this project this is only used for GUI-made hyperlinks (as opposed
         # to FUNCTION-based hyperlinks). Unfortunately the're needed to parse
@@ -167,8 +175,8 @@ module SimpleXlsxReader
       ###
       # /End SAX hooks
 
-      def strip_namespace(name)
-        name.split(':').last
+      def strip_namespace(element_name)
+        @strip_namespace ? element_name.split(':').last : element_name
       end
 
       def test_headers_hash_against_current_row
