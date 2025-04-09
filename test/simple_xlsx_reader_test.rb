@@ -611,6 +611,11 @@ describe SimpleXlsxReader do
           _(described_class.cast('2', 's', nil, shared_strings: %w[a b c], url: url))
             .must_equal SXR::Hyperlink.new(url, 'c')
         end
+
+        it 'creates a hyperlink with a fixnum friendly_name' do
+          _(described_class.cast('123', nil, :fixnum, url: url))
+            .must_equal SXR::Hyperlink.new(url, '123')
+        end
       end
     end
 

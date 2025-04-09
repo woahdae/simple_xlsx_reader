@@ -21,9 +21,9 @@ module SimpleXlsxReader
     attr_reader :url
 
     def initialize(url, friendly_name = nil)
-      @friendly_name = friendly_name
       @url = url
-      super(friendly_name || url)
+      @friendly_name = friendly_name&.to_s
+      super(@friendly_name || @url)
     end
   end
 end
