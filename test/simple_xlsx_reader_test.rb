@@ -603,13 +603,18 @@ describe SimpleXlsxReader do
       describe 'with the url option' do
         let(:url) { 'http://www.example.com/hyperlink' }
         it 'creates a hyperlink with a string type' do
-          _(described_class.cast('A link', 'str', :string, url: url))
+          _(described_class.cast('A link', 'str', :string, url:))
             .must_equal SXR::Hyperlink.new(url, 'A link')
         end
 
         it 'creates a hyperlink with a shared string type' do
-          _(described_class.cast('2', 's', nil, shared_strings: %w[a b c], url: url))
+          _(described_class.cast('2', 's', nil, shared_strings: %w[a b c], url:))
             .must_equal SXR::Hyperlink.new(url, 'c')
+        end
+
+        it 'creates a hyperlink with a fixnum friendly_name' do
+          _(described_class.cast('123', nil, :fixnum, url:))
+            .must_equal SXR::Hyperlink.new(url, '123')
         end
       end
     end
