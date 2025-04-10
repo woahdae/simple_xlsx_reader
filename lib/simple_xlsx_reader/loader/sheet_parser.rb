@@ -242,6 +242,12 @@ module SimpleXlsxReader
       end
 
       ##
+      # Returns the maximum row number (or nil)
+      def length
+        @last_seen_row_idx
+      end
+
+      ##
       # Returns the last column name, ex. 'E'
       def last_cell_letter
         return unless @dimension

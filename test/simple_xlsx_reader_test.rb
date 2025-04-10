@@ -728,6 +728,62 @@ describe SimpleXlsxReader do
       end
     end
 
+    describe '#length' do
+      # Note, this is not a valid sheet, since the last row is actually 5 but
+      # the dimension specifies 4. This is just for testing.
+      let(:sheet) do
+        Nokogiri::XML(
+          <<-XML
+          <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+            <dimension ref="A1:B4" />
+            <sheetData>
+              <row><c r='A1' s='0'><v>Cell</v></c><c r='B1' s='0'><v>Cell</v></c></row>
+              <row><c r='A2' s='0'><v>Cell</v></c><c r='B2' s='0'><v>Cell</v></c></row>
+              <row><c r='A3' s='0'><v>Cell</v></c><c r='B3' s='0'><v>Cell/v></c></row>
+              <row><c r='A4' s='0'><v>Cell</v></c><c r='B4' s='0'><v>Cell</v></c></row>
+              <row><c r='A5' s='0'><v>Cell</v></c><c r='B5' s='0'><v>Cell</v></c></row>
+            </sheetData>
+          </worksheet>
+          XML
+        ).remove_namespaces!
+      end
+
+      let(:loader) do
+        SimpleXlsxReader::Loader.new(nil).tap do |l|
+          l.shared_strings = []
+          l.sheet_toc = { 'Sheet1': 0 }
+          l.style_types = []
+          l.base_date = SimpleXlsxReader::DATE_SYSTEM_1900
+        end
+      end
+
+      let(:sheet_parser) do
+        tempfile = Tempfile.new(['sheet', '.xml'])
+        tempfile.write(sheet)
+        tempfile.rewind
+
+        SimpleXlsxReader::Loader::SheetParser.new(
+          file_io: tempfile,
+          loader: loader
+        ).tap { |parser| parser.parse {} }
+      end
+
+      it 'uses the last row if /worksheet/dimension is available' do
+        _(sheet_parser.length).must_equal 5
+      end
+
+      it 'uses the last row if /worksheet/dimension is missing' do
+        sheet.at_xpath('/worksheet/dimension').remove
+        _(sheet_parser.length).must_equal 5
+      end
+
+      it 'returns 0 if the sheet is missing rows' do
+        sheet.xpath('/worksheet/sheetData/row').remove
+        sheet.xpath('/worksheet/dimension').remove
+        _(sheet_parser.length).must_equal 0
+      end
+    end
+
     describe '#column_letter_to_number' do
       let(:subject) { SXR::Loader::SheetParser.new(file_io: nil, loader: nil) }
 
