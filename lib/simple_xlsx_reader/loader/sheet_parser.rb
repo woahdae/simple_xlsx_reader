@@ -37,14 +37,6 @@ module SimpleXlsxReader
 
         @file_io.rewind # if it's IO from IO.read, we need to rewind it
 
-        @strip_namespace =
-          begin
-            @file_io.gets # xml header
-            wb = @file_io.gets
-            @file_io.rewind
-            wb&.include?(':worksheet')
-          end
-
         # In this project this is only used for GUI-made hyperlinks (as opposed
         # to FUNCTION-based hyperlinks). Unfortunately the're needed to parse
         # the spreadsheet, and they come AFTER the sheet data. So, solution is
@@ -65,18 +57,16 @@ module SimpleXlsxReader
       ###
       # SAX document hooks
 
-      def start_element(name, attrs = [])
-        attrs ||= []
-        name = strip_namespace(name)
-
+      def start_element_namespace(name, attrs = [], _prefix, _uri, _ns)
         case name
-        when 'dimension' then @dimension = attrs.last.last
+        when 'dimension'
+          @dimension = attrs.last.value
         when 'row'
-          @current_row_num = attrs.find {|(k, v)| k == 'r'}&.last&.to_i
+          @current_row_num = attrs.find {|attr| attr.localname == 'r'}&.value&.to_i
           @current_row = Array.new(column_length)
           @column_index = 0
         when 'c'
-          attrs = attrs.inject({}) {|acc, (k, v)| acc[k] = v; acc}
+          attrs = attrs.inject({}) {|acc, attr| acc[attr.localname] = attr.value; acc}
           @cell_name = attrs['r'] || column_number_to_letter(@column_index)
           @type = attrs['t']
           @style = attrs['s'] && style_types[attrs['s'].to_i]
@@ -131,9 +121,7 @@ module SimpleXlsxReader
         @captured = @captured ? @captured + (captured || '') : captured
       end
 
-      def end_element(name)
-        name = strip_namespace(name)
-
+      def end_element_namespace(name, _prefix, _uri)
         case name
         when 'row'
           if @headers == true # ya a little funky
@@ -174,10 +162,6 @@ module SimpleXlsxReader
 
       ###
       # /End SAX hooks
-
-      def strip_namespace(element_name)
-        @strip_namespace ? element_name.split(':').last : element_name
-      end
 
       def test_headers_hash_against_current_row
         found = false
@@ -231,10 +215,10 @@ module SimpleXlsxReader
           @hyperlinks_by_cell
         end
 
-        def start_element(name, attrs)
+        def start_element_namespace(name, attrs, _prefix, _uri, _ns)
           case name
           when 'hyperlink'
-            attrs = attrs.inject({}) {|acc, (k, v)| acc[k] = v; acc}
+            attrs = attrs.inject({}) {|acc, attr| acc[attr.localname] = attr.value; acc}
             id = attrs['id'] || attrs['r:id']
 
             @hyperlinks_by_cell[attrs['ref']] =
