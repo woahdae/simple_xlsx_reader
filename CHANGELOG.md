@@ -1,3 +1,12 @@
+### 5.1.0
+
+* Parse sheets containing namespaces and no 'r' att (@skipchris)
+* Fix Zlib error when loading from string (@myabc)
+* Prevent a SimpleXlsxReader::CellLoadError (no implicit conversion of Integer
+  into String) when the casted value (friendly name) is not a string (@tsdbrown)
+* Accidental 25% perfarmance improvement while experimenting with namespace
+  support (see #53f5a9).
+
 ### 5.0.0
 
 * Change SimpleXlsxReader::Hyperlink to default to the visible cell value
