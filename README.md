@@ -13,7 +13,7 @@ then forgotten. We just want to get the data, and get out!
 doc = SimpleXlsxReader.open('/path/to/workbook.xlsx')
 doc.sheets # => [<#SXR::Sheet>, ...]
 doc.sheets.first.name # 'Sheet1'
-rows = doc.sheet.first.rows # <SXR::Document::RowsProxy>
+rows = doc.sheets.first.rows # <SXR::Document::RowsProxy>
 rows.each # an <Enumerator> ready to chain or stream
 rows.each {} # Streams the rows to your block
 rows.each(headers: true) {} # Streams row-hashes
