@@ -639,6 +639,18 @@ describe SimpleXlsxReader do
       end
     end
 
+    describe 'namespaced shared_strings' do
+      let(:xml) do
+        File.open(File.join(File.dirname(__FILE__), 'shared_strings_namespaced.xml'))
+      end
+
+      let(:ss) { SimpleXlsxReader::Loader::SharedStringsParser.parse(xml) }
+
+      it 'parses strings into a list' do
+        _(ss).must_equal ['Shared 1', 'Shared 2', 'Shared 3']
+      end
+    end
+
     describe 'style_types' do
       let(:xml_file) do
         File.open(File.join(File.dirname(__FILE__), 'styles.xml'))
