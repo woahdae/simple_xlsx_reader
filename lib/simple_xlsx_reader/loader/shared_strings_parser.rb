@@ -22,7 +22,7 @@ module SimpleXlsxReader
 
       attr_reader :result
 
-      def start_element(name, _attrs = [])
+      def start_element_namespace(name, attrs = [], _prefix, _uri, _ns)
         case name
         when 'si' then @current_string = +"" # UTF-8 variant of String.new
         when 't' then @extract = true
@@ -35,7 +35,7 @@ module SimpleXlsxReader
         @current_string << string
       end
 
-      def end_element(name)
+      def end_element_namespace(name, _prefix, _uri)
         case name
         when 't' then @extract = false
         when 'si' then @result << @current_string
