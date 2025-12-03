@@ -60,14 +60,14 @@ module SimpleXlsxReader
       def start_element_namespace(name, attrs = [], _prefix, _uri, _ns)
         case name
         when 'dimension'
-          @dimension = attrs.last.value
+          @dimension = attrs.last.value.upcase
         when 'row'
           @current_row_num = attrs.find {|attr| attr.localname == 'r'}&.value&.to_i
           @current_row = Array.new(column_length)
           @column_index = 0
         when 'c'
           attrs = attrs.inject({}) {|acc, attr| acc[attr.localname] = attr.value; acc}
-          @cell_name = attrs['r'] || column_number_to_letter(@column_index)
+          @cell_name = attrs['r']&.upcase || column_number_to_letter(@column_index)
           @type = attrs['t']
           @style = attrs['s'] && style_types[attrs['s'].to_i]
           @column_index += 1
@@ -221,7 +221,7 @@ module SimpleXlsxReader
             attrs = attrs.inject({}) {|acc, attr| acc[attr.localname] = attr.value; acc}
             id = attrs['id'] || attrs['r:id']
 
-            @hyperlinks_by_cell[attrs['ref']] =
+            @hyperlinks_by_cell[attrs['ref'].upcase] =
               @xrels.at_xpath(%(//*[@Id="#{id}"])).attr('Target')
           end
         end
