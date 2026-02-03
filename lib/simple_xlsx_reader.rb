@@ -31,6 +31,7 @@ module SimpleXlsxReader
   DATE_SYSTEM_1900 = Date.new(1899, 12, 30)
   DATE_SYSTEM_1904 = Date.new(1904, 1, 1)
 
+  class ZipContentError < StandardError; end
   class CellLoadError < StandardError; end
 
   class << self
