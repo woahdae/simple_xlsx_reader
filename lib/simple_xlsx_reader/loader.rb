@@ -75,6 +75,7 @@ module SimpleXlsxReader
           zip.find_entry(path.tr('/', '\\').downcase) # Sometimes it's lowercase
 
         if block
+          raise ZipContentError.new("Missing required entry in zip: #{path}") unless entry
           entry.get_input_stream(&block)
         else
           entry
