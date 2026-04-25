@@ -31,9 +31,10 @@ module SimpleXlsxReader
         @url = nil # silence warnings
         @function = nil # silence warnings
         @capture = nil # silence warnings
-        @captured = nil # silence warnings
+        @raw_value = nil # silence warnings
         @dimension = nil # silence warnings
         @column_index = 0
+        @cell_idx = 0 # silence warnings
 
         @file_io.rewind # if it's IO from IO.read, we need to rewind it
 
@@ -66,10 +67,23 @@ module SimpleXlsxReader
           @current_row = Array.new(column_length)
           @column_index = 0
         when 'c'
-          attrs = attrs.inject({}) {|acc, attr| acc[attr.localname] = attr.value; acc}
-          @cell_name = attrs['r'] || column_number_to_letter(@column_index)
-          @type = attrs['t']
-          @style = attrs['s'] && style_types[attrs['s'].to_i]
+          r = nil; t = nil; s = nil
+          attrs.each do |attr|
+            case attr.localname
+            when 'r' then r = attr.value
+            when 't' then t = attr.value
+            when 's' then s = attr.value
+            end
+          end
+          if r
+            @cell_name = r
+            @cell_idx = column_letter_to_number(r.slice(/[A-Z]+/)) - 1
+          else
+            @cell_name = column_number_to_letter(@column_index)
+            @cell_idx = @column_index
+          end
+          @type = t
+          @style = s && style_types[s.to_i]
           @column_index += 1
         when 'f' then @function = true
         when 'v', 't' then @capture = true
@@ -84,32 +98,6 @@ module SimpleXlsxReader
 
         return unless @capture
 
-        captured =
-          begin
-            SimpleXlsxReader::Loader.cast(
-              string, @type, @style,
-              url: @url || hyperlinks_by_cell&.[](@cell_name),
-              shared_strings: shared_strings,
-              base_date: base_date
-            )
-          rescue StandardError => e
-            column, row = @cell_name.match(/([A-Z]+)([0-9]+)/).captures
-            col_idx = column_letter_to_number(column) - 1
-            row_idx = row.to_i - 1
-
-            if !SimpleXlsxReader.configuration.catch_cell_load_errors
-              error = CellLoadError.new(
-                "Row #{row_idx}, Col #{col_idx}: #{e.message}"
-              )
-              error.set_backtrace(e.backtrace)
-              raise error
-            else
-              @load_errors[[row_idx, col_idx]] = e.message
-
-              string
-            end
-          end
-
         # For some reason I can't figure out in a reasonable timeframe,
         # SAX parsing some workbooks captures separate strings in the same cell
         # when we encounter UTF-8, although I can't get workbooks made in my
@@ -118,7 +106,7 @@ module SimpleXlsxReader
         # to make it not do this (looked, couldn't find it).
         #
         # Loading the workbook test/chunky_utf8.xlsx repros the issue.
-        @captured = @captured ? @captured + (captured || '') : captured
+        @raw_value = @raw_value ? @raw_value + string : string
       end
 
       def end_element_namespace(name, _prefix, _uri)
@@ -152,9 +140,34 @@ module SimpleXlsxReader
           # considering it's not a problem with actual excel docs.
           @dimension = "A1:#{@cell_name}" if @dimension.nil?
         when 'v', 't'
-          @current_row[cell_idx] = @captured
+          if @raw_value
+            @current_row[@cell_idx] =
+              begin
+                SimpleXlsxReader::Loader.cast(
+                  @raw_value, @type, @style,
+                  url: @url || hyperlinks_by_cell&.[](@cell_name),
+                  shared_strings: shared_strings,
+                  base_date: base_date
+                )
+              rescue StandardError => e
+                column, row = @cell_name.match(/([A-Z]+)([0-9]+)/).captures
+                col_idx = column_letter_to_number(column) - 1
+                row_idx = row.to_i - 1
+
+                if !SimpleXlsxReader.configuration.catch_cell_load_errors
+                  error = CellLoadError.new(
+                    "Row #{row_idx}, Col #{col_idx}: #{e.message}"
+                  )
+                  error.set_backtrace(e.backtrace)
+                  raise error
+                else
+                  @load_errors[[row_idx, col_idx]] = e.message
+                  @raw_value
+                end
+              end
+            @raw_value = nil
+          end
           @capture = false
-          @captured = nil
         when 'f' then @function = false
         when 'c' then @url = nil
         end
@@ -235,10 +248,6 @@ module SimpleXlsxReader
         return 0 unless @dimension
 
         @column_length ||= column_letter_to_number(last_cell_letter)
-      end
-
-      def cell_idx
-        column_letter_to_number(@cell_name.scan(/[A-Z]+/).first) - 1
       end
 
       ##
