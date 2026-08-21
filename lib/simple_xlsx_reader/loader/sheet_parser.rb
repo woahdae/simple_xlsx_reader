@@ -221,8 +221,14 @@ module SimpleXlsxReader
             attrs = attrs.inject({}) {|acc, attr| acc[attr.localname] = attr.value; acc}
             id = attrs['id'] || attrs['r:id']
 
-            @hyperlinks_by_cell[attrs['ref']] =
-              @xrels.at_xpath(%(//*[@Id="#{id}"])).attr('Target')
+            # Hyperlinks pointing inside the workbook (ex. to another sheet) carry a
+            # 'location' attribute instead of a relationship id, so there is nothing
+            # to resolve. An id missing from the rels file means a broken document,
+            # which we can still read cell values from.
+            relationship = @xrels.at_xpath(%(//*[@Id="#{id}"]))
+            return unless relationship
+
+            @hyperlinks_by_cell[attrs['ref']] = relationship.attr('Target')
           end
         end
       end
