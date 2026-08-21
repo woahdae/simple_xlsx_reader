@@ -13,6 +13,8 @@ Gem::Specification.new do |gem|
   gem.homepage      = ""
   gem.license       = "MIT"
 
+  gem.required_ruby_version = ">= 2.6"
+
   gem.add_dependency 'nokogiri'
   gem.add_dependency 'rubyzip'
 

@@ -218,14 +218,13 @@ module SimpleXlsxReader
         def start_element_namespace(name, attrs, _prefix, _uri, _ns)
           case name
           when 'hyperlink'
-            attrs = attrs.inject({}) {|acc, attr| acc[attr.localname] = attr.value; acc}
-            id = attrs['id'] || attrs['r:id']
+            attrs = attrs.to_h { |attr| [attr.localname, attr.value] }
 
             # Hyperlinks pointing inside the workbook (ex. to another sheet) carry a
             # 'location' attribute instead of a relationship id, so there is nothing
             # to resolve. An id missing from the rels file means a broken document,
             # which we can still read cell values from.
-            relationship = @xrels.at_xpath(%(//*[@Id="#{id}"]))
+            relationship = @xrels.at_xpath(%(//*[@Id="#{attrs['id'] || attrs['r:id']}"]))
             return unless relationship
 
             @hyperlinks_by_cell[attrs['ref']] = relationship.attr('Target')
