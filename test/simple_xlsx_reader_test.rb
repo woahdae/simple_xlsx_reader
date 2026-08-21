@@ -603,18 +603,25 @@ describe SimpleXlsxReader do
       describe 'with the url option' do
         let(:url) { 'http://www.example.com/hyperlink' }
         it 'creates a hyperlink with a string type' do
-          _(described_class.cast('A link', 'str', :string, url: url))
-            .must_equal SXR::Hyperlink.new(url, 'A link')
+          hyperlink = described_class.cast('A link', 'str', :string, url: url)
+          _(hyperlink).must_be_instance_of SXR::Hyperlink
+          _(hyperlink.url).must_equal url
+          _(hyperlink.friendly_name).must_equal 'A link'
         end
 
         it 'creates a hyperlink with a shared string type' do
-          _(described_class.cast('2', 's', nil, shared_strings: %w[a b c], url: url))
-            .must_equal SXR::Hyperlink.new(url, 'c')
+          hyperlink =
+            described_class.cast('2', 's', nil, shared_strings: %w[a b c], url: url)
+          _(hyperlink).must_be_instance_of SXR::Hyperlink
+          _(hyperlink.url).must_equal url
+          _(hyperlink.friendly_name).must_equal 'c'
         end
 
         it 'creates a hyperlink with a fixnum friendly_name' do
-          _(described_class.cast('123', nil, :fixnum, url: url))
-            .must_equal SXR::Hyperlink.new(url, '123')
+          hyperlink = described_class.cast('123', nil, :fixnum, url: url)
+          _(hyperlink).must_be_instance_of SXR::Hyperlink
+          _(hyperlink.url).must_equal url
+          _(hyperlink.friendly_name).must_equal '123'
         end
       end
     end
@@ -965,20 +972,19 @@ describe SimpleXlsxReader do
       _(@row[6]).must_equal 'Cell G1'
     end
 
+    # Hyperlink is a String subclass and doesn't override #==, so asserting
+    # against a Hyperlink alone only compares the visible cell value: it passes
+    # just as well when no url was recorded at all. Assert the url explicitly.
     it 'reads hyperlinks created via HYPERLINK()' do
-      _(@row[7]).must_equal(
-        SXR::Hyperlink.new(
-          'http://www.example.com/hyperlink-function', 'HYPERLINK function'
-        )
-      )
+      _(@row[7]).must_be_instance_of SXR::Hyperlink
+      _(@row[7].url).must_equal 'http://www.example.com/hyperlink-function'
+      _(@row[7].friendly_name).must_equal 'HYPERLINK function'
     end
 
     it 'reads hyperlinks created via the GUI' do
-      _(@row[8]).must_equal(
-        SXR::Hyperlink.new(
-          'http://www.example.com/hyperlink-gui', 'GUI-made hyperlink'
-        )
-      )
+      _(@row[8]).must_be_instance_of SXR::Hyperlink
+      _(@row[8].url).must_equal 'http://www.example.com/hyperlink-gui'
+      _(@row[8].friendly_name).must_equal 'GUI-made hyperlink'
     end
 
     it "reads 'Generic' cells with numbers as numbers" do
