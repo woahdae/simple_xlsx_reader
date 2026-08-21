@@ -603,18 +603,25 @@ describe SimpleXlsxReader do
       describe 'with the url option' do
         let(:url) { 'http://www.example.com/hyperlink' }
         it 'creates a hyperlink with a string type' do
-          _(described_class.cast('A link', 'str', :string, url: url))
-            .must_equal SXR::Hyperlink.new(url, 'A link')
+          hyperlink = described_class.cast('A link', 'str', :string, url: url)
+          _(hyperlink).must_be_instance_of SXR::Hyperlink
+          _(hyperlink.url).must_equal url
+          _(hyperlink.friendly_name).must_equal 'A link'
         end
 
         it 'creates a hyperlink with a shared string type' do
-          _(described_class.cast('2', 's', nil, shared_strings: %w[a b c], url: url))
-            .must_equal SXR::Hyperlink.new(url, 'c')
+          hyperlink =
+            described_class.cast('2', 's', nil, shared_strings: %w[a b c], url: url)
+          _(hyperlink).must_be_instance_of SXR::Hyperlink
+          _(hyperlink.url).must_equal url
+          _(hyperlink.friendly_name).must_equal 'c'
         end
 
         it 'creates a hyperlink with a fixnum friendly_name' do
-          _(described_class.cast('123', nil, :fixnum, url: url))
-            .must_equal SXR::Hyperlink.new(url, '123')
+          hyperlink = described_class.cast('123', nil, :fixnum, url: url)
+          _(hyperlink).must_be_instance_of SXR::Hyperlink
+          _(hyperlink.url).must_equal url
+          _(hyperlink.friendly_name).must_equal '123'
         end
       end
     end
@@ -965,20 +972,19 @@ describe SimpleXlsxReader do
       _(@row[6]).must_equal 'Cell G1'
     end
 
+    # Hyperlink is a String subclass and doesn't override #==, so asserting
+    # against a Hyperlink alone only compares the visible cell value: it passes
+    # just as well when no url was recorded at all. Assert the url explicitly.
     it 'reads hyperlinks created via HYPERLINK()' do
-      _(@row[7]).must_equal(
-        SXR::Hyperlink.new(
-          'http://www.example.com/hyperlink-function', 'HYPERLINK function'
-        )
-      )
+      _(@row[7]).must_be_instance_of SXR::Hyperlink
+      _(@row[7].url).must_equal 'http://www.example.com/hyperlink-function'
+      _(@row[7].friendly_name).must_equal 'HYPERLINK function'
     end
 
     it 'reads hyperlinks created via the GUI' do
-      _(@row[8]).must_equal(
-        SXR::Hyperlink.new(
-          'http://www.example.com/hyperlink-gui', 'GUI-made hyperlink'
-        )
-      )
+      _(@row[8]).must_be_instance_of SXR::Hyperlink
+      _(@row[8].url).must_equal 'http://www.example.com/hyperlink-gui'
+      _(@row[8].friendly_name).must_equal 'GUI-made hyperlink'
     end
 
     it "reads 'Generic' cells with numbers as numbers" do
@@ -1079,6 +1085,138 @@ describe SimpleXlsxReader do
       it 'reads cell content' do
         _(@row[0]).must_equal 'Cell A'
       end
+    end
+  end
+
+  # Excel only writes a sheet rels file when a hyperlink needs a relationship
+  # (ie. an external one), so a sheet mixing external and internal hyperlinks is
+  # what exposes internal hyperlinks to this parser.
+  describe 'parsing documents with internal hyperlinks' do
+    let(:sheet) do
+      Nokogiri::XML(
+        <<-XML
+          <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+            <dimension ref="A1:B1" />
+            <sheetData>
+              <row>
+                <c r='A1' s='0'>
+                  <v>GUI-made hyperlink</v>
+                </c>
+
+                <c r='B1' s='0'>
+                  <v>Link to another sheet</v>
+                </c>
+              </row>
+            </sheetData>
+
+            <hyperlinks>
+              <hyperlink ref="A1" id="rId1"/>
+              <hyperlink ref="B1" location="Sheet2!A1" display="Link to another sheet"/>
+            </hyperlinks>
+          </worksheet>
+        XML
+      ).remove_namespaces!
+    end
+
+    let(:rels) do
+      [
+        Nokogiri::XML(
+          <<-XML
+            <Relationships>
+              <Relationship
+                Id="rId1"
+                Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink"
+                Target="http://www.example.com/hyperlink-gui"
+                TargetMode="External"
+              />
+            </Relationships>
+          XML
+        ).remove_namespaces!
+      ]
+    end
+
+    # Held in a let so the Tempfile isn't garbage collected (and its file
+    # deleted) while the rows are still being lazily parsed.
+    let(:archive) { xlsx.archive }
+
+    before do
+      @row = SimpleXlsxReader.open(archive.path).sheets[0].rows.to_a[0]
+    end
+
+    it 'reads hyperlinks created via the GUI' do
+      _(@row[0]).must_be_instance_of SXR::Hyperlink
+      _(@row[0].url).must_equal 'http://www.example.com/hyperlink-gui'
+      _(@row[0].friendly_name).must_equal 'GUI-made hyperlink'
+    end
+
+    # Hyperlink is a String subclass, so an assertion on the visible value alone
+    # would also pass if we recorded the 'location' as the url.
+    it 'reads internal hyperlinks as plain cell values' do
+      _(@row[1]).must_be_instance_of String
+      _(@row[1]).must_equal 'Link to another sheet'
+    end
+  end
+
+  describe 'parsing documents with hyperlinks missing from the rels file' do
+    let(:sheet) do
+      Nokogiri::XML(
+        <<-XML
+          <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+            <dimension ref="A1:B1" />
+            <sheetData>
+              <row>
+                <c r='A1' s='0'>
+                  <v>GUI-made hyperlink</v>
+                </c>
+
+                <c r='B1' s='0'>
+                  <v>Dangling hyperlink</v>
+                </c>
+              </row>
+            </sheetData>
+
+            <hyperlinks>
+              <hyperlink ref="A1" id="rId1"/>
+              <hyperlink ref="B1" id="rId404"/>
+            </hyperlinks>
+          </worksheet>
+        XML
+      ).remove_namespaces!
+    end
+
+    let(:rels) do
+      [
+        Nokogiri::XML(
+          <<-XML
+            <Relationships>
+              <Relationship
+                Id="rId1"
+                Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink"
+                Target="http://www.example.com/hyperlink-gui"
+                TargetMode="External"
+              />
+            </Relationships>
+          XML
+        ).remove_namespaces!
+      ]
+    end
+
+    # Held in a let so the Tempfile isn't garbage collected (and its file
+    # deleted) while the rows are still being lazily parsed.
+    let(:archive) { xlsx.archive }
+
+    before do
+      @row = SimpleXlsxReader.open(archive.path).sheets[0].rows.to_a[0]
+    end
+
+    it 'reads the hyperlinks it can resolve' do
+      _(@row[0]).must_be_instance_of SXR::Hyperlink
+      _(@row[0].url).must_equal 'http://www.example.com/hyperlink-gui'
+    end
+
+    it 'reads unresolvable hyperlinks as plain cell values' do
+      _(@row[1]).must_be_instance_of String
+      _(@row[1]).must_equal 'Dangling hyperlink'
     end
   end
 
