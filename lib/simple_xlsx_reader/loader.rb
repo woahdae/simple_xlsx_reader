@@ -100,6 +100,15 @@ module SimpleXlsxReader
       end
     end
 
+    def self.plain_number_text(value)
+      return value if Integer(value, 10, exception: false)
+
+      number = Float(value, exception: false)
+      return value unless number&.finite?
+
+      number == number.to_i ? number.to_i.to_s : number.to_s
+    end
+
     ##
     # The heart of typecasting. The ruby type is determined either explicitly
     # from the cell xml or implicitly from the cell style, and this
@@ -159,6 +168,8 @@ module SimpleXlsxReader
           value
         when :fixnum
           Integer(value, 10, exception: false) || value.to_f.to_i
+        when :text
+          plain_number_text(value)
         when :float
           value.to_f
         when :percentage

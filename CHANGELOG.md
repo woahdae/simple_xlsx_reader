@@ -2,6 +2,10 @@
 
 * Fix integer-format cells written in scientific notation. Google Sheets
   exports 99770064 as `9.9770064E7`, which was read as 9.
+* Add `rows.each(column_styles: {...})` to override the style of a column's
+  number cells (`:text`, `:float`, `:fixnum` or `:date`) in place of the one
+  their number format implies. `:text` is new: the number's digits as a
+  string, for IDs and phone numbers.
 
 ### 5.1.0
 

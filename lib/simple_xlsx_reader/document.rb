@@ -80,25 +80,39 @@ module SimpleXlsxReader
       #   row that matches at least one header, in case the header row isn't the
       #   first.
       #
+      # `column_styles` overrides the style of a column's number cells, which
+      # otherwise comes from their number format and decides how they are
+      # cast. Keys are headers as yielded, or column indexes when not using
+      # `headers:`; a key that matches no column is ignored. Styles:
+      #
+      # * `:text` - the number's digits as a string: "99770064", never
+      #   99770064.0 or "9.9770064E7"
+      # * `:float` - a Float
+      # * `:fixnum` - an Integer
+      # * `:date` - a Date, or a Time if the number has a time part
+      #
+      # Text cells are not changed. Streaming only, like `headers:`.
+      #
       # If rows have been slurped, #each will iterate the slurped rows instead.
       #
       # Note, calls to this after slurping will raise if given the `headers:`
       # argument, as that's handled by the sheet parser. If this is important
       # to someone, speak up and we could potentially support it.
-      def each(headers: false, &block)
+      def each(headers: false, column_styles: nil, &block)
         if slurped?
           raise '#each does not support headers with slurped rows' if headers
+          raise '#each does not support column_styles with slurped rows' if column_styles&.any?
 
           slurped.each(&block)
         elsif block_given?
           # It's possible to slurp while yielding to the block, which would
           # null out @sheet_parser, so let's just keep track of it here too
           sheet_parser = @sheet_parser
-          @sheet_parser.parse(headers: headers, &block).tap do
+          @sheet_parser.parse(headers: headers, column_styles: column_styles, &block).tap do
             @load_errors = sheet_parser.load_errors
           end
         else
-          to_enum(:each, headers: headers)
+          to_enum(:each, headers: headers, column_styles: column_styles)
         end
       end
 
