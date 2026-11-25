@@ -1,3 +1,8 @@
+### Unreleased
+
+* Fix integer-format cells written in scientific notation. Google Sheets
+  exports 99770064 as `9.9770064E7`, which was read as 9.
+
 ### 5.1.0
 
 * Parse sheets containing namespaces and no 'r' att (@skipchris)

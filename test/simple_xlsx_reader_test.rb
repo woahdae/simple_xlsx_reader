@@ -595,6 +595,12 @@ describe SimpleXlsxReader do
           .must_equal Time.parse('2013-08-19 18:30 UTC')
       end
 
+      it 'reads fixnum styles written in scientific notation' do
+        _(described_class.cast('9.9770064E7', nil, :fixnum))
+          .must_equal 99_770_064
+        _(described_class.cast('010', nil, :fixnum)).must_equal 10
+      end
+
       it 'raises when date-styled values are not numerical' do
         _(-> { described_class.cast('14 is not a valid date', nil, :date) })
           .must_raise(ArgumentError)

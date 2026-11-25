@@ -158,7 +158,7 @@ module SimpleXlsxReader
         when :unsupported
           value
         when :fixnum
-          value.to_i
+          Integer(value, 10, exception: false) || value.to_f.to_i
         when :float
           value.to_f
         when :percentage
