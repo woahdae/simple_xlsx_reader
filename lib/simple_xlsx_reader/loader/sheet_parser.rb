@@ -19,11 +19,14 @@ module SimpleXlsxReader
         @loader = loader
       end
 
-      def parse(headers: false, &block)
+      def parse(headers: false, column_styles: nil, &block)
         raise 'parse called without a block; what should this do?'\
           unless block_given?
 
         @headers = headers
+        @column_styles = column_styles&.any? ? column_styles : nil
+        @styles_by_column = nil
+        resolve_styles_by_column unless headers
         @each_callback = block
         @load_errors = {}
         @current_row_num = nil
@@ -68,8 +71,11 @@ module SimpleXlsxReader
         when 'c'
           attrs = attrs.inject({}) {|acc, attr| acc[attr.localname] = attr.value; acc}
           @cell_name = attrs['r'] || column_number_to_letter(@column_index)
+          @cell_idx = nil
           @type = attrs['t']
           @style = attrs['s'] && style_types[attrs['s'].to_i]
+          column_style = number_cell_column_style
+          @type, @style = nil, column_style if column_style
           @column_index += 1
         when 'f' then @function = true
         when 'v', 't' then @capture = true
@@ -142,6 +148,7 @@ module SimpleXlsxReader
             yield_row(@current_row, headers: false)
           end
 
+          resolve_styles_by_column if @column_styles && @styles_by_column.nil?
           @last_seen_row_idx += 1
 
           # Note that excel writes a '/worksheet/dimension' node we can get
@@ -162,6 +169,22 @@ module SimpleXlsxReader
 
       ###
       # /End SAX hooks
+
+      def resolve_styles_by_column
+        return unless @column_styles
+
+        if @headers.is_a?(Array)
+          @styles_by_column = @headers.map { |header| @column_styles[header] }
+        elsif !@headers
+          @styles_by_column = @column_styles.each_with_object([]) do |(index, style), styles|
+            styles[index] = style if index.is_a?(Integer)
+          end
+        end
+      end
+
+      def number_cell_column_style
+        @styles_by_column[cell_idx] if @styles_by_column && (@type.nil? || @type == 'n')
+      end
 
       def test_headers_hash_against_current_row
         found = false
@@ -238,7 +261,7 @@ module SimpleXlsxReader
       end
 
       def cell_idx
-        column_letter_to_number(@cell_name.scan(/[A-Z]+/).first) - 1
+        @cell_idx ||= column_letter_to_number(@cell_name.scan(/[A-Z]+/).first) - 1
       end
 
       ##

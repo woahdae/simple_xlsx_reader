@@ -220,6 +220,90 @@ describe SimpleXlsxReader do
     end
   end
 
+  describe 'Sheet#rows#each(column_styles: {...})' do
+    let(:styles) do
+      <<~XML
+        <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+          <cellXfs count="3">
+            <xf numFmtId="0" />
+            <xf numFmtId="1" />
+            <xf numFmtId="2" />
+          </cellXfs>
+        </styleSheet>
+      XML
+    end
+
+    # ID and Born are General, Score is "0" and Grade is "0.00"
+    let(:sheet) do
+      <<~XML
+        <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+          <dimension ref="A1:E2" />
+          <sheetData>
+            <row r="1">
+              <c r="A1" s="0"><v>ID</v></c>
+              <c r="B1" s="0"><v>Score</v></c>
+              <c r="C1" s="0"><v>Grade</v></c>
+              <c r="D1" s="0"><v>Born</v></c>
+              <c r="E1" s="0"><v>Count</v></c>
+            </row>
+            <row r="2">
+              <c r="A2" s="0"><v>9.9770064E7</v></c>
+              <c r="B2" s="1"><v>12.5</v></c>
+              <c r="C2" s="2"><v>5.0</v></c>
+              <c r="D2" s="0"><v>41505</v></c>
+              <c r="E2" s="0"><v>9.9770064E7</v></c>
+            </row>
+          </sheetData>
+        </worksheet>
+      XML
+    end
+
+    it 'casts the number cells of the named columns by the given style' do
+      rows = reader.sheets[0].rows.each(
+        headers: true,
+        column_styles: { 'ID' => :text, 'Score' => :float, 'Grade' => :fixnum, 'Born' => :date, 'Absent' => :text }
+      ).to_a
+
+      _(rows).must_equal(
+        [{
+          'ID' => '99770064', 'Score' => 12.5, 'Grade' => 5,
+          'Born' => Date.parse('2013-08-19'), 'Count' => 99_770_064.0
+        }]
+      )
+    end
+
+    it 'takes column indexes when not using headers' do
+      rows = reader.sheets[0].rows.each(column_styles: { 0 => :text }).to_a
+
+      _(rows).must_equal(
+        [%w[ID Score Grade Born Count], ['99770064', 12, 5.0, 41_505, 99_770_064.0]]
+      )
+    end
+
+    describe 'when the cells are text cells' do
+      let(:sheet) do
+        <<~XML
+          <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+            <dimension ref="A1:A5" />
+            <sheetData>
+              <row r="1"><c r="A1" t="inlineStr" s="0"><is><t>ID</t></is></c></row>
+              <row r="2"><c r="A2" t="inlineStr" s="0"><is><t>12706.0</t></is></c></row>
+              <row r="3"><c r="A3" t="inlineStr" s="0"><is><t>9.9770064E7</t></is></c></row>
+              <row r="4"><c r="A4" t="inlineStr" s="0"><is><t>0012706</t></is></c></row>
+              <row r="5"><c r="A5" t="inlineStr" s="0"><is><t>hi mom</t></is></c></row>
+            </sheetData>
+          </worksheet>
+        XML
+      end
+
+      it 'yields them as written' do
+        rows = reader.sheets[0].rows.each(headers: true, column_styles: { 'ID' => :text }).to_a
+
+        _(rows.map { |row| row['ID'] }).must_equal ['12706.0', '9.9770064E7', '0012706', 'hi mom']
+      end
+    end
+  end
+
   describe 'Sheet#rows#each(headers: ->(row) {...})' do
     let(:sheet) do
       <<~XML
@@ -593,6 +677,23 @@ describe SimpleXlsxReader do
       it 'reads number types styled as date_times' do
         _(described_class.cast('41505.77083', 'n', :date_time))
           .must_equal Time.parse('2013-08-19 18:30 UTC')
+      end
+
+      it 'reads fixnum styles written in scientific notation' do
+        _(described_class.cast('9.9770064E7', nil, :fixnum))
+          .must_equal 99_770_064
+        _(described_class.cast('010', nil, :fixnum)).must_equal 10
+      end
+
+      it 'reads text types as the digits of the number' do
+        _(described_class.cast('9.9770064E7', nil, :text)).must_equal '99770064'
+        _(described_class.cast('91911.0', nil, :text)).must_equal '91911'
+        _(described_class.cast('12.50', nil, :text)).must_equal '12.5'
+      end
+
+      it 'reads text types it cannot write out as given' do
+        _(described_class.cast('1E999999999', nil, :text)).must_equal '1E999999999'
+        _(described_class.cast('ID', nil, :text)).must_equal 'ID'
       end
 
       it 'raises when date-styled values are not numerical' do

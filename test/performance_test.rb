@@ -105,4 +105,9 @@ describe 'SimpleXlsxReader Benchmark' do
   bench_performance_linear 'parses sheets in linear time', 0.999 do |n|
     SimpleXlsxReader.open(@xlsxs[n].path).sheets[0].rows.each(headers: true) {|_row| }
   end
+
+  bench_performance_linear 'parses sheets with column_styles in linear time', 0.999 do |n|
+    SimpleXlsxReader.open(@xlsxs[n].path).sheets[0].rows
+      .each(column_styles: { 1 => :text, 5 => :fixnum, 9 => :float }) {|_row| }
+  end
 end

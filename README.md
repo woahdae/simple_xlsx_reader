@@ -102,6 +102,31 @@ rows.each(headers: true).with_object({}) do |row, acc|
 end
 ```
 
+A number cell gets its Ruby type from its style, meaning its number format,
+which is whatever the spreadsheet's author picked for display. When you know
+what a column holds, override the style with `column_styles`:
+
+```
+rows.each(headers: true, column_styles: { 'Hero ID' => :text, 'Score' => :float }) do |row|
+  ...
+end
+```
+
+* `:text` - the number's digits as a string. An ID or a phone number is not a
+  quantity, and you don't want 99770064.0, or Google Sheets' `9.9770064E7`.
+* `:float` - a Float. A cell formatted `0` that holds 12.5 is otherwise read
+  as 12.
+* `:fixnum` - an Integer. A cell formatted `0.00` that holds 5 is otherwise
+  read as 5.0.
+* `:date` - a Date, or a Time if the number has a time part. A date left on
+  the General format is otherwise read as its serial number.
+
+Keys are headers as yielded, or column indexes when you aren't using
+`headers:`. A key that matches no column is ignored. Text cells are left
+alone. A number cell cannot hold a leading zero (the file stores 01234 as
+1234), so use a text cell for those. Like `headers:`, this works when
+streaming, not after `slurp`.
+
 Sometimes though you have some junk at the top of your spreadsheet:
 
 ```
